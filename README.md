@@ -164,6 +164,8 @@ show recent assistant questions
 
 ## Testing
 
+The service suite includes focused coverage for FX conversion, RAG fallback behaviour, SQL safety validation, transfer creation, Admin report summaries, LLM usage logging, schema RAG, and assistant routing.
+
 ```powershell
 python -m pytest tests\test_services.py --basetemp .pytest-tmp
 python -m compileall app
