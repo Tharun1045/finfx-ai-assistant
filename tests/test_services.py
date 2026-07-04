@@ -2,15 +2,18 @@ from app.services.fx_service import FxService
 from app.services.knowledge_service import KnowledgeService
 from app.services.assistant_service import AssistantService
 from app.services.provider_service import ProviderService
+from app.services.reporting_service import ReportingService
 from app.services.sql_agent import SqlAgent
 from app.services.tool_planner import ToolPlan
 from app.services.database_service import DatabaseService
 from app.services.transaction_service import TransactionService
+from app.services.transfer_service import TransferService
 from app.services.ollama_client import (
     LlmUsageTracker,
     OllamaClient,
     current_question_id,
 )
+from app.models.schemas import TransferRequest
 
 
 class OfflineOllamaClient:
@@ -178,6 +181,34 @@ class StaticTrendFxService(FxService):
         }
 
 
+class StaticConversionFxService(FxService):
+    def convert(
+        self, amount: float, from_currency: str, to_currency: str, use_live: bool = True
+    ) -> dict:
+        return {
+            "amount": amount,
+            "from_currency": from_currency.upper(),
+            "to_currency": to_currency.upper(),
+            "rate": 126.39,
+            "converted_amount": round(amount * 126.39, 2),
+            "as_of": "2026-07-04",
+            "provider": "test-fx",
+            "is_live": use_live,
+            "source": "Deterministic test FX service",
+        }
+
+
+class StaticReportFxService(FxService):
+    def get_rates(self, use_live: bool = True) -> dict:
+        return {
+            "base": "GBP",
+            "as_of": "2026-07-04",
+            "provider": "test-fx",
+            "rates": {"EUR": 1.18, "USD": 1.33, "INR": 126.39},
+            "is_live": use_live,
+        }
+
+
 class GeneratedSqlClient(OfflineOllamaClient):
     def embed(self, text: str):
         text = text.lower()
@@ -267,6 +298,16 @@ def test_currency_conversion_returns_demo_amount() -> None:
     assert result["converted_amount"] == 118
     assert result["to_currency"] == "EUR"
     assert result["is_live"] is False
+
+
+def test_fx_conversion_returns_unit_rate_and_converted_amount() -> None:
+    result = FxService().convert(5000, "GBP", "INR", use_live=False)
+
+    assert result["from_currency"] == "GBP"
+    assert result["to_currency"] == "INR"
+    assert result["amount"] == 5000
+    assert result["rate"] > 0
+    assert result["converted_amount"] == round(5000 * result["rate"], 2)
 
 
 def test_live_rates_fall_back_to_demo_when_disabled() -> None:
@@ -368,6 +409,27 @@ def test_database_service_persists_sqlite_transfer(tmp_path) -> None:
     assert database.list_transfers()["transfers"][0]["customer_name"] == "Test Customer"
 
 
+def test_transfer_service_creates_and_persists_transfer_record(tmp_path) -> None:
+    database = DatabaseService(f"sqlite:///{tmp_path / 'test.db'}")
+    service = TransferService(StaticConversionFxService(), database)
+
+    result = service.create_transfer(
+        TransferRequest(
+            customer_name="Transfer Service Customer",
+            from_currency="GBP",
+            to_currency="INR",
+            amount=5000,
+            beneficiary_country="India",
+            purpose="Family support",
+        )
+    )
+
+    assert result["stored"] is True
+    assert result["transfer"]["customer_name"] == "Transfer Service Customer"
+    assert result["transfer"]["converted_amount"] == 631950
+    assert result["transfer"]["provider"] == "test-fx"
+
+
 def test_database_service_persists_llm_usage_logs(tmp_path) -> None:
     database = DatabaseService(f"sqlite:///{tmp_path / 'test.db'}")
     stored = database.create_llm_usage_log(
@@ -459,6 +521,17 @@ def test_knowledge_answer_returns_citation_with_offline_fallback() -> None:
     assert answer["citations"]
     assert answer["mode"] == "keyword-retrieval"
     assert "proof of identity" in answer["answer"].lower()
+
+
+def test_rag_fallback_response_uses_local_keyword_retrieval() -> None:
+    answer = KnowledgeService(ollama_client=OfflineOllamaClient()).answer(
+        "How long can a payment delay take?"
+    )
+
+    assert answer["mode"] == "keyword-retrieval"
+    assert answer["llm_available"] is False
+    assert answer["citations"]
+    assert "delay" in answer["answer"].lower()
 
 
 def test_knowledge_answer_uses_pgvector_when_available() -> None:
@@ -761,6 +834,47 @@ def test_sql_agent_blocks_dangerous_llm_generated_sql(tmp_path) -> None:
     assert answer["mode"] == "llm-sql-blocked"
     assert answer["safe_sql"] is None
     assert answer["result"] == []
+
+
+def test_sql_validation_blocks_delete_update_and_drop(tmp_path) -> None:
+    agent = SqlAgent(
+        TransactionService(),
+        DatabaseService(f"sqlite:///{tmp_path / 'test.db'}"),
+        ollama_client=OfflineOllamaClient(),
+    )
+
+    for sql in (
+        "DELETE FROM transfers;",
+        "UPDATE transfers SET status = 'submitted';",
+        "DROP TABLE transfers;",
+    ):
+        validation = agent.validate_sql(sql)
+        assert validation["valid"] is False
+
+
+def test_admin_report_summary_includes_persisted_transfer_data(tmp_path) -> None:
+    database = DatabaseService(f"sqlite:///{tmp_path / 'test.db'}")
+    database.create_transfer(
+        {
+            "customer_name": "Report Customer",
+            "from_currency": "GBP",
+            "to_currency": "INR",
+            "amount": 750,
+            "converted_amount": 94792.5,
+            "rate": 126.39,
+            "beneficiary_country": "India",
+            "purpose": "Family support",
+            "provider": "test-fx",
+        }
+    )
+    report = ReportingService(
+        StaticReportFxService(), TransactionService(), database
+    ).daily_report()
+
+    assert report["title"] == "Daily FX and Payments Operations Report"
+    assert report["persisted_transfer_summary"]["total_persisted_transfers"] == 1
+    assert report["persisted_transfer_summary"]["total_source_amount"] == 750
+    assert report["fx_snapshot"]["provider"] == "test-fx"
 
 
 def test_assistant_routes_fx_questions_to_fx_tool() -> None:
