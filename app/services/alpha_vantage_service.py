@@ -20,7 +20,9 @@ class AlphaVantageService:
             "requires_api_key": True,
         }
 
-    def fx_daily(self, from_currency: str, to_currency: str, outputsize: str = "compact") -> dict:
+    def fx_daily(
+        self, from_currency: str, to_currency: str, outputsize: str = "compact"
+    ) -> dict:
         if not self.is_configured():
             return {
                 "provider": self.provider,
@@ -29,20 +31,24 @@ class AlphaVantageService:
                 "next_step": "Add ALPHA_VANTAGE_API_KEY to your environment or .env file.",
             }
 
-        query = urlencode({
-            "function": "FX_DAILY",
-            "from_symbol": from_currency.upper(),
-            "to_symbol": to_currency.upper(),
-            "outputsize": outputsize,
-            "apikey": settings.alpha_vantage_api_key,
-        })
+        query = urlencode(
+            {
+                "function": "FX_DAILY",
+                "from_symbol": from_currency.upper(),
+                "to_symbol": to_currency.upper(),
+                "outputsize": outputsize,
+                "apikey": settings.alpha_vantage_api_key,
+            }
+        )
         request = Request(
             f"{settings.alpha_vantage_base_url}?{query}",
             headers={"User-Agent": "FinFX-AI-Assistant/0.1"},
         )
 
         try:
-            with urlopen(request, timeout=settings.provider_timeout_seconds) as response:
+            with urlopen(
+                request, timeout=settings.provider_timeout_seconds
+            ) as response:
                 payload = json.loads(response.read().decode("utf-8"))
         except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
             return {"provider": self.provider, "configured": True, "error": str(exc)}
@@ -51,7 +57,9 @@ class AlphaVantageService:
             return {
                 "provider": self.provider,
                 "configured": True,
-                "error": payload.get("Error Message") or payload.get("Note") or payload.get("Information"),
+                "error": payload.get("Error Message")
+                or payload.get("Note")
+                or payload.get("Information"),
             }
 
         return {

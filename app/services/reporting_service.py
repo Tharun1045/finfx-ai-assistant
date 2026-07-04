@@ -8,7 +8,9 @@ class ReportingService:
         summary = self.transaction_service.summary()
         suspicious = self.transaction_service.suspicious_transactions()
         rates = self.fx_service.get_rates()
-        persisted = self.database_service.transfer_summary() if self.database_service else None
+        persisted = (
+            self.database_service.transfer_summary() if self.database_service else None
+        )
 
         return {
             "title": "Daily FX and Payments Operations Report",

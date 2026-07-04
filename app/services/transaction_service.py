@@ -35,8 +35,13 @@ class TransactionService:
             "total_transactions": len(rows),
             "total_volume_gbp": round(total_volume, 2),
             "status_counts": dict(status_counts),
-            "top_currency_pair": {"pair": top_pair[0], "volume_gbp": round(top_pair[1], 2)},
-            "volume_by_country": {country: round(volume, 2) for country, volume in country_volume.items()},
+            "top_currency_pair": {
+                "pair": top_pair[0],
+                "volume_gbp": round(top_pair[1], 2),
+            },
+            "volume_by_country": {
+                country: round(volume, 2) for country, volume in country_volume.items()
+            },
         }
 
     def failed_transactions(self) -> list[dict]:

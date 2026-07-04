@@ -19,14 +19,18 @@ class FxService:
 
     def get_rates(self, use_live: bool = True) -> dict:
         if use_live:
-            live_rates = self._fetch_live_rates(settings.default_base_currency, settings.default_quote_currencies)
+            live_rates = self._fetch_live_rates(
+                settings.default_base_currency, settings.default_quote_currencies
+            )
             if live_rates:
                 return live_rates
 
         demo_rates = self.get_demo_rates()
         return {**demo_rates, "provider": "local-demo", "is_live": False}
 
-    def convert(self, amount: float, from_currency: str, to_currency: str, use_live: bool = True) -> dict:
+    def convert(
+        self, amount: float, from_currency: str, to_currency: str, use_live: bool = True
+    ) -> dict:
         from_code = from_currency.upper()
         to_code = to_currency.upper()
 
@@ -49,19 +53,29 @@ class FxService:
 
         return self._convert_with_demo_rates(amount, from_code, to_code)
 
-    def best_rate_this_month(self, from_currency: str, to_currency: str, today: date | None = None) -> dict:
+    def best_rate_this_month(
+        self, from_currency: str, to_currency: str, today: date | None = None
+    ) -> dict:
         current_date = today or date.today()
         start = current_date.replace(day=1)
-        return self.best_rate_for_period(from_currency, to_currency, start, current_date)
+        return self.best_rate_for_period(
+            from_currency, to_currency, start, current_date
+        )
 
-    def best_rate_last_month(self, from_currency: str, to_currency: str, today: date | None = None) -> dict:
+    def best_rate_last_month(
+        self, from_currency: str, to_currency: str, today: date | None = None
+    ) -> dict:
         current_date = today or date.today()
         this_month_start = current_date.replace(day=1)
         last_month_end = this_month_start - timedelta(days=1)
         last_month_start = last_month_end.replace(day=1)
-        return self.best_rate_for_period(from_currency, to_currency, last_month_start, last_month_end)
+        return self.best_rate_for_period(
+            from_currency, to_currency, last_month_start, last_month_end
+        )
 
-    def best_rate_for_period(self, from_currency: str, to_currency: str, start: date, end: date) -> dict:
+    def best_rate_for_period(
+        self, from_currency: str, to_currency: str, start: date, end: date
+    ) -> dict:
         rows = self.get_rate_series(from_currency, to_currency, start, end)
         if not rows:
             latest = self.convert(1, from_currency, to_currency, use_live=True)
@@ -99,13 +113,17 @@ class FxService:
             "observations": len(rows),
         }
 
-    def get_rate_series(self, from_currency: str, to_currency: str, start: date, end: date) -> list[dict]:
-        query = urlencode({
-            "base": from_currency.upper(),
-            "quotes": to_currency.upper(),
-            "from": start.isoformat(),
-            "to": end.isoformat(),
-        })
+    def get_rate_series(
+        self, from_currency: str, to_currency: str, start: date, end: date
+    ) -> list[dict]:
+        query = urlencode(
+            {
+                "base": from_currency.upper(),
+                "quotes": to_currency.upper(),
+                "from": start.isoformat(),
+                "to": end.isoformat(),
+            }
+        )
         url = f"{settings.live_fx_base_url}/rates?{query}"
         request = Request(url, headers={"User-Agent": "FinFX-AI-Assistant/0.1"})
 
@@ -122,7 +140,9 @@ class FxService:
         for row in payload:
             if not all(key in row for key in ("date", "quote", "rate")):
                 continue
-            rows.append({"date": row["date"], "quote": row["quote"], "rate": float(row["rate"])})
+            rows.append(
+                {"date": row["date"], "quote": row["quote"], "rate": float(row["rate"])}
+            )
         return rows
 
     def trend_summary(
@@ -184,7 +204,10 @@ class FxService:
             "change_percent": round(change_percent, 4),
             "direction": direction,
             "observations": len(period_rows),
-            "series": [{"date": row["date"], "rate": round(row["rate"], 6)} for row in period_rows],
+            "series": [
+                {"date": row["date"], "rate": round(row["rate"], 6)}
+                for row in period_rows
+            ],
             "source": "Live rates from Frankfurter public exchange-rate API",
             "provider": "frankfurter",
             "is_live": True,
@@ -207,7 +230,9 @@ class FxService:
             },
         }
 
-    def rate_variance(self, from_currency: str, to_currency: str, today: date | None = None) -> dict:
+    def rate_variance(
+        self, from_currency: str, to_currency: str, today: date | None = None
+    ) -> dict:
         current_date = today or date.today()
         start = current_date - timedelta(days=10)
         rows = self.get_rate_series(from_currency, to_currency, start, current_date)
@@ -249,7 +274,9 @@ class FxService:
             "is_live": True,
         }
 
-    def _convert_with_demo_rates(self, amount: float, from_code: str, to_code: str) -> dict:
+    def _convert_with_demo_rates(
+        self, amount: float, from_code: str, to_code: str
+    ) -> dict:
         demo_rates = self.get_demo_rates()
         rates = demo_rates["rates"]
 
@@ -272,8 +299,12 @@ class FxService:
             "is_live": False,
         }
 
-    def _fetch_live_rates(self, base_currency: str, quote_currencies: tuple[str, ...]) -> dict | None:
-        query = urlencode({"base": base_currency.upper(), "quotes": ",".join(quote_currencies)})
+    def _fetch_live_rates(
+        self, base_currency: str, quote_currencies: tuple[str, ...]
+    ) -> dict | None:
+        query = urlencode(
+            {"base": base_currency.upper(), "quotes": ",".join(quote_currencies)}
+        )
         url = f"{settings.live_fx_base_url}/rates?{query}"
 
         request = Request(url, headers={"User-Agent": "FinFX-AI-Assistant/0.1"})
@@ -304,7 +335,11 @@ class FxService:
             return payload.get("rates", {})
 
         if isinstance(payload, list):
-            return {row["quote"]: row["rate"] for row in payload if "quote" in row and "rate" in row}
+            return {
+                row["quote"]: row["rate"]
+                for row in payload
+                if "quote" in row and "rate" in row
+            }
 
         return {}
 

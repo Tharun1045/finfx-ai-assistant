@@ -48,7 +48,9 @@ class AssistantService:
 
     def _answer_fx_outlook(self, question: str, pair: tuple[str, str]) -> dict:
         from_currency, to_currency = pair
-        trend = self.fx_service.trend_summary(from_currency, to_currency, days=30, average_days=20)
+        trend = self.fx_service.trend_summary(
+            from_currency, to_currency, days=30, average_days=20
+        )
         if "error" in trend:
             return self._unsupported_currency_response(trend)
         return self._format_outlook_answer(question, trend)
@@ -64,43 +66,72 @@ class AssistantService:
         if plan.intent == "transaction_analytics":
             return self._customer_sql_restricted_response(plan)
 
-        if plan.intent not in {"fx_latest_rate", "fx_best_rate", "fx_trend", "fx_outlook"}:
+        if plan.intent not in {
+            "fx_latest_rate",
+            "fx_best_rate",
+            "fx_trend",
+            "fx_outlook",
+        }:
             return None
 
         if not plan.base_currency or not plan.quote_currency:
             return None
 
         if plan.intent == "fx_outlook":
-            return self._answer_fx_outlook(question, (plan.base_currency, plan.quote_currency))
+            return self._answer_fx_outlook(
+                question, (plan.base_currency, plan.quote_currency)
+            )
 
         if plan.intent == "fx_trend":
-            trend = self.fx_service.trend_summary(plan.base_currency, plan.quote_currency, days=30, average_days=20)
+            trend = self.fx_service.trend_summary(
+                plan.base_currency, plan.quote_currency, days=30, average_days=20
+            )
             if "error" in trend:
                 return self._unsupported_currency_response(trend)
             return self._format_trend_answer(question, trend, mode="llm-tool-agent")
 
         if plan.intent == "fx_best_rate":
             if plan.period == "last_month":
-                rate = self.fx_service.best_rate_last_month(plan.base_currency, plan.quote_currency)
+                rate = self.fx_service.best_rate_last_month(
+                    plan.base_currency, plan.quote_currency
+                )
                 period_label = "last month"
             else:
-                rate = self.fx_service.best_rate_this_month(plan.base_currency, plan.quote_currency)
+                rate = self.fx_service.best_rate_this_month(
+                    plan.base_currency, plan.quote_currency
+                )
                 period_label = "this month"
             if "error" in rate:
                 return self._unsupported_currency_response(rate)
-            return self._format_best_rate_answer(question, rate, period_label, mode="llm-tool-agent", plan=plan)
+            return self._format_best_rate_answer(
+                question, rate, period_label, mode="llm-tool-agent", plan=plan
+            )
 
-        converted = self.fx_service.convert(plan.amount or 1, plan.base_currency, plan.quote_currency, use_live=True)
+        converted = self.fx_service.convert(
+            plan.amount or 1, plan.base_currency, plan.quote_currency, use_live=True
+        )
         if "error" in converted:
             return self._unsupported_currency_response(converted)
-        return self._format_latest_rate_answer(question, converted, mode="llm-tool-agent", plan=plan)
+        return self._format_latest_rate_answer(
+            question, converted, mode="llm-tool-agent", plan=plan
+        )
 
     def _answer_fx_question(self, question: str, pair: tuple[str, str]) -> dict:
         """Answer live-rate, best-rate, and trend questions using the FX service."""
         from_currency, to_currency = pair
         normalized = question.lower()
 
-        if any(term in normalized for term in ("trend", "average", "moving average", "last 30 days", "20-day", "20 day")):
+        if any(
+            term in normalized
+            for term in (
+                "trend",
+                "average",
+                "moving average",
+                "last 30 days",
+                "20-day",
+                "20 day",
+            )
+        ):
             trend = self.fx_service.trend_summary(
                 from_currency,
                 to_currency,
@@ -111,7 +142,9 @@ class AssistantService:
                 return self._unsupported_currency_response(trend)
             return self._format_trend_answer(question, trend, mode="fx-tool")
 
-        wants_best_rate = any(term in normalized for term in ("best", "highest", "highesgt", "peak"))
+        wants_best_rate = any(
+            term in normalized for term in ("best", "highest", "highesgt", "peak")
+        )
         asks_month = "month" in normalized
 
         if wants_best_rate and asks_month:
@@ -125,9 +158,13 @@ class AssistantService:
             if "error" in rate:
                 return self._unsupported_currency_response(rate)
 
-            return self._format_best_rate_answer(question, rate, period_label, mode="fx-tool")
+            return self._format_best_rate_answer(
+                question, rate, period_label, mode="fx-tool"
+            )
 
-        converted = self.fx_service.convert(1, from_currency, to_currency, use_live=True)
+        converted = self.fx_service.convert(
+            1, from_currency, to_currency, use_live=True
+        )
         if "error" in converted:
             return self._unsupported_currency_response(converted)
 
@@ -141,8 +178,20 @@ class AssistantService:
                 f"because the historical series was not available from the provider."
             )
         else:
-            relation = "above" if trend["latest_rate"] > trend["average_rate"] else "below" if trend["latest_rate"] < trend["average_rate"] else "equal to"
-            direction = "increased" if trend["direction"] == "up" else "decreased" if trend["direction"] == "down" else "was flat"
+            relation = (
+                "above"
+                if trend["latest_rate"] > trend["average_rate"]
+                else (
+                    "below"
+                    if trend["latest_rate"] < trend["average_rate"]
+                    else "equal to"
+                )
+            )
+            direction = (
+                "increased"
+                if trend["direction"] == "up"
+                else "decreased" if trend["direction"] == "down" else "was flat"
+            )
             deterministic_answer = (
                 f"Over the last {trend['period_days']} observations, {trend['from_currency']}/{trend['to_currency']} "
                 f"{direction} from {trend['start_rate']} on {trend['start_date']} to {trend['latest_rate']} on "
@@ -151,7 +200,11 @@ class AssistantService:
                 f"{trend['observations']} Frankfurter observations."
             )
 
-        answer = self._summarize_tool_result(question, trend, deterministic_answer) if mode == "llm-tool-agent" else deterministic_answer
+        answer = (
+            self._summarize_tool_result(question, trend, deterministic_answer)
+            if mode == "llm-tool-agent"
+            else deterministic_answer
+        )
         preview_points = trend.get("series", [])[-5:]
         return {
             "answer": answer,
@@ -159,12 +212,14 @@ class AssistantService:
             "mode": mode,
             "llm_available": mode == "llm-tool-agent",
             "tool_plan": None,
-            "retrieved_chunks": [{
-                "source": trend["provider"],
-                "heading": f"{trend['from_currency']}/{trend['to_currency']} {trend['period_days']}-day trend",
-                "score": 1.0,
-                "preview": f"{trend['source']}; latest points: {preview_points}",
-            }],
+            "retrieved_chunks": [
+                {
+                    "source": trend["provider"],
+                    "heading": f"{trend['from_currency']}/{trend['to_currency']} {trend['period_days']}-day trend",
+                    "score": 1.0,
+                    "preview": f"{trend['source']}; latest points: {preview_points}",
+                }
+            ],
         }
 
     def _format_outlook_answer(self, question: str, trend: dict) -> dict:
@@ -175,10 +230,24 @@ class AssistantService:
                 f"{trend['latest_rate']} as of {trend['latest_date']}."
             )
         else:
-            relation = "above" if trend["latest_rate"] > trend["average_rate"] else "below" if trend["latest_rate"] < trend["average_rate"] else "equal to"
-            if trend["direction"] == "up" and trend["latest_rate"] >= trend["average_rate"]:
+            relation = (
+                "above"
+                if trend["latest_rate"] > trend["average_rate"]
+                else (
+                    "below"
+                    if trend["latest_rate"] < trend["average_rate"]
+                    else "equal to"
+                )
+            )
+            if (
+                trend["direction"] == "up"
+                and trend["latest_rate"] >= trend["average_rate"]
+            ):
                 bias = "recent momentum is positive"
-            elif trend["direction"] == "down" and trend["latest_rate"] <= trend["average_rate"]:
+            elif (
+                trend["direction"] == "down"
+                and trend["latest_rate"] <= trend["average_rate"]
+            ):
                 bias = "recent momentum is negative"
             else:
                 bias = "recent momentum is mixed"
@@ -206,15 +275,21 @@ class AssistantService:
                 "average_rate": trend.get("average_rate"),
                 "average_days": trend.get("average_days"),
                 "change_percent": trend.get("change_percent"),
-                "bias": bias if trend["average_rate"] is not None else "insufficient historical data",
+                "bias": (
+                    bias
+                    if trend["average_rate"] is not None
+                    else "insufficient historical data"
+                ),
                 "direction": trend.get("direction"),
             },
-            "retrieved_chunks": [{
-                "source": trend["provider"],
-                "heading": f"{trend['from_currency']}/{trend['to_currency']} trend-based outlook",
-                "score": 1.0,
-                "preview": f"{trend['source']}; {trend['observations']} historical observations used.",
-            }],
+            "retrieved_chunks": [
+                {
+                    "source": trend["provider"],
+                    "heading": f"{trend['from_currency']}/{trend['to_currency']} trend-based outlook",
+                    "score": 1.0,
+                    "preview": f"{trend['source']}; {trend['observations']} historical observations used.",
+                }
+            ],
         }
 
     def _format_best_rate_answer(
@@ -231,19 +306,25 @@ class AssistantService:
             f"{rate['latest_rate']} from {rate['latest_date']} for that period. This is based on "
             f"{rate['observations']} live Frankfurter observations."
         )
-        answer = self._summarize_tool_result(question, rate, deterministic_answer) if mode == "llm-tool-agent" else deterministic_answer
+        answer = (
+            self._summarize_tool_result(question, rate, deterministic_answer)
+            if mode == "llm-tool-agent"
+            else deterministic_answer
+        )
         return {
             "answer": answer,
             "citations": [rate["provider"]],
             "mode": mode,
             "llm_available": mode == "llm-tool-agent",
             "tool_plan": self._plan_payload(plan),
-            "retrieved_chunks": [{
-                "source": rate["provider"],
-                "heading": f"{rate['from_currency']}/{rate['to_currency']} live rate series",
-                "score": 1.0,
-                "preview": f"{rate['period_start']} to {rate['period_end']}; source: {rate['source']}",
-            }],
+            "retrieved_chunks": [
+                {
+                    "source": rate["provider"],
+                    "heading": f"{rate['from_currency']}/{rate['to_currency']} live rate series",
+                    "score": 1.0,
+                    "preview": f"{rate['period_start']} to {rate['period_end']}; source: {rate['source']}",
+                }
+            ],
         }
 
     def _format_latest_rate_answer(
@@ -258,22 +339,30 @@ class AssistantService:
             f"{converted['rate']} as of {converted['as_of']}. For {converted['amount']} {converted['from_currency']}, "
             f"that is {converted['converted_amount']} {converted['to_currency']}."
         )
-        answer = self._summarize_tool_result(question, converted, deterministic_answer) if mode == "llm-tool-agent" else deterministic_answer
+        answer = (
+            self._summarize_tool_result(question, converted, deterministic_answer)
+            if mode == "llm-tool-agent"
+            else deterministic_answer
+        )
         return {
             "answer": answer,
             "citations": [converted["provider"]],
             "mode": mode,
             "llm_available": mode == "llm-tool-agent",
             "tool_plan": self._plan_payload(plan),
-            "retrieved_chunks": [{
-                "source": converted["provider"],
-                "heading": f"{converted['from_currency']}/{converted['to_currency']} live rate",
-                "score": 1.0,
-                "preview": converted["source"],
-            }],
+            "retrieved_chunks": [
+                {
+                    "source": converted["provider"],
+                    "heading": f"{converted['from_currency']}/{converted['to_currency']} live rate",
+                    "score": 1.0,
+                    "preview": converted["source"],
+                }
+            ],
         }
 
-    def _summarize_tool_result(self, question: str, tool_result: dict, fallback: str) -> str:
+    def _summarize_tool_result(
+        self, question: str, tool_result: dict, fallback: str
+    ) -> str:
         """Let the selected LLM make a tool result easier to read without changing the facts."""
         prompt = f"""You are FinFX AI Assistant.
 Use only the tool result below. Do not add financial advice.
@@ -334,21 +423,49 @@ Answer:"""
     @staticmethod
     def _looks_like_fx_question(question: str) -> bool:
         normalized = question.lower()
-        terms = ("rate", "exchange", "convert", "currency", "fx", "gbp", "eur", "usd", "inr")
+        terms = (
+            "rate",
+            "exchange",
+            "convert",
+            "currency",
+            "fx",
+            "gbp",
+            "eur",
+            "usd",
+            "inr",
+        )
         return any(term in normalized for term in terms)
 
     @staticmethod
     def _looks_like_fx_trend_question(question: str) -> bool:
         normalized = question.lower()
-        terms = ("trend", "average", "moving average", "last 30 days", "20-day", "20 day")
+        terms = (
+            "trend",
+            "average",
+            "moving average",
+            "last 30 days",
+            "20-day",
+            "20 day",
+        )
         return any(term in normalized for term in terms)
 
     @staticmethod
     def _looks_like_fx_outlook_question(question: str) -> bool:
         normalized = question.lower()
-        future_terms = ("will", "next", "forecast", "predict", "prediction", "outlook", "increase", "decrease")
+        future_terms = (
+            "will",
+            "next",
+            "forecast",
+            "predict",
+            "prediction",
+            "outlook",
+            "increase",
+            "decrease",
+        )
         horizon_terms = ("next 30", "30 days", "next month", "coming month")
-        return any(term in normalized for term in future_terms) and any(term in normalized for term in horizon_terms)
+        return any(term in normalized for term in future_terms) and any(
+            term in normalized for term in horizon_terms
+        )
 
     @staticmethod
     def _looks_like_customer_support_question(question: str) -> bool:
@@ -370,7 +487,9 @@ Answer:"""
             "support",
             "help",
         )
-        return any(term in normalized for term in payment_issue_terms) and any(term in normalized for term in help_terms)
+        return any(term in normalized for term in payment_issue_terms) and any(
+            term in normalized for term in help_terms
+        )
 
     @staticmethod
     def _unsupported_currency_response(error: dict) -> dict:

@@ -13,21 +13,37 @@ class ProviderService:
 
     def status(self) -> dict:
         return {
-            "active_without_keys": [{
-                "provider": "frankfurter",
-                "configured": True,
-                "capabilities": ["live_fx_rates", "historical_fx_rates", "rate_variance"],
-                "requires_api_key": False,
-            }],
+            "active_without_keys": [
+                {
+                    "provider": "frankfurter",
+                    "configured": True,
+                    "capabilities": [
+                        "live_fx_rates",
+                        "historical_fx_rates",
+                        "rate_variance",
+                    ],
+                    "requires_api_key": False,
+                }
+            ],
             "optional_api_key_providers": [
                 self.alpha_vantage_service.status(),
                 self.fred_service.status(),
                 {
                     "provider": "paid-providers",
                     "configured": False,
-                    "capabilities": ["realtime_bid_ask", "bank_grade_rates", "professional_forecasts"],
+                    "capabilities": [
+                        "realtime_bid_ask",
+                        "bank_grade_rates",
+                        "professional_forecasts",
+                    ],
                     "requires_api_key": True,
-                    "examples": ["OpenExchangeRates paid tiers", "XE", "OANDA", "Refinitiv", "Bloomberg"],
+                    "examples": [
+                        "OpenExchangeRates paid tiers",
+                        "XE",
+                        "OANDA",
+                        "Refinitiv",
+                        "Bloomberg",
+                    ],
                 },
             ],
         }

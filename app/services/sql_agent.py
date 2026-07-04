@@ -112,7 +112,9 @@ class SqlAgent:
         "vacuum",
     }
 
-    def __init__(self, transaction_service, database_service=None, ollama_client=None) -> None:
+    def __init__(
+        self, transaction_service, database_service=None, ollama_client=None
+    ) -> None:
         self.transaction_service = transaction_service
         self.database_service = database_service
         self.ollama_client = ollama_client or OllamaClient()
@@ -134,7 +136,9 @@ class SqlAgent:
             return llm_result
         if llm_result:
             blocked_llm_result = llm_result
-            if any(re.search(rf"\b{term}\b", normalized) for term in self.blocked_terms):
+            if any(
+                re.search(rf"\b{term}\b", normalized) for term in self.blocked_terms
+            ):
                 return blocked_llm_result
 
         highest_answer = self._answer_highest_transfer_question(normalized)
@@ -207,7 +211,9 @@ class SqlAgent:
     def _answer_with_llm_sql(self, question: str) -> dict | None:
         """Use schema RAG to give the LLM only table metadata, then validate SQL before execution."""
         schema_context = self._schema_context(question)
-        plan = self.ollama_client.generate_json(self._sql_prompt(question, schema_context))
+        plan = self.ollama_client.generate_json(
+            self._sql_prompt(question, schema_context)
+        )
         if not plan or not isinstance(plan.get("sql"), str):
             return None
 
@@ -232,7 +238,8 @@ class SqlAgent:
             "result": query_result["rows"],
             "database_status": query_result["database_status"],
             "schema_context": schema_context,
-            "explanation": plan.get("explanation") or "Ollama generated a read-only SQL query, which was validated before execution.",
+            "explanation": plan.get("explanation")
+            or "Ollama generated a read-only SQL query, which was validated before execution.",
         }
 
     def schema_vector_status(self) -> dict:
@@ -257,11 +264,14 @@ class SqlAgent:
             if not embedding:
                 skipped += 1
                 continue
-            self.database_service.upsert_schema_chunk({
-                "id": chunk.id,
-                "table": chunk.table,
-                "text": chunk.text,
-            }, embedding)
+            self.database_service.upsert_schema_chunk(
+                {
+                    "id": chunk.id,
+                    "table": chunk.table,
+                    "text": chunk.text,
+                },
+                embedding,
+            )
             indexed += 1
 
         return {
@@ -273,8 +283,18 @@ class SqlAgent:
 
     def _answer_currency_transfer_question(self, normalized: str) -> dict | None:
         currencies = ("GBP", "EUR", "USD", "INR", "AUD", "CAD", "AED")
-        requested = next((currency for currency in currencies if currency.lower() in normalized), None)
-        transfer_terms = ("transaction", "transactions", "transfer", "transfers", "payment", "payments")
+        requested = next(
+            (currency for currency in currencies if currency.lower() in normalized),
+            None,
+        )
+        transfer_terms = (
+            "transaction",
+            "transactions",
+            "transfer",
+            "transfers",
+            "payment",
+            "payments",
+        )
         if not requested or not any(term in normalized for term in transfer_terms):
             return None
 
@@ -298,7 +318,15 @@ class SqlAgent:
 
     def _answer_highest_transfer_question(self, normalized: str) -> dict | None:
         highest_terms = ("highest", "largest", "biggest", "maximum", "max")
-        transfer_terms = ("transaction", "transactions", "transfer", "transfers", "payment", "payments", "amount")
+        transfer_terms = (
+            "transaction",
+            "transactions",
+            "transfer",
+            "transfers",
+            "payment",
+            "payments",
+            "amount",
+        )
         if not any(term in normalized for term in highest_terms):
             return None
         if not any(term in normalized for term in transfer_terms):
@@ -316,7 +344,9 @@ class SqlAgent:
                 filters.append(f"to_currency = '{currency}'")
                 explanation_parts.append(f"to {currency}")
             else:
-                filters.append(f"(from_currency = '{currency}' OR to_currency = '{currency}')")
+                filters.append(
+                    f"(from_currency = '{currency}' OR to_currency = '{currency}')"
+                )
                 explanation_parts.append(f"involving {currency}")
 
         if "today" in normalized:
@@ -333,7 +363,11 @@ class SqlAgent:
         LIMIT 1;
         """.strip()
         query_result = self.database_service.run_select_query(sql)
-        scope = " ".join(explanation_parts) if explanation_parts else "across persisted transfers"
+        scope = (
+            " ".join(explanation_parts)
+            if explanation_parts
+            else "across persisted transfers"
+        )
         return {
             "mode": "safe-sql-template",
             "generated_sql": sql,
@@ -345,7 +379,10 @@ class SqlAgent:
 
     def _currency_in_question(self, normalized: str) -> str | None:
         currencies = ("GBP", "EUR", "USD", "INR", "AUD", "CAD", "AED")
-        return next((currency for currency in currencies if currency.lower() in normalized), None)
+        return next(
+            (currency for currency in currencies if currency.lower() in normalized),
+            None,
+        )
 
     def validate_sql(self, sql: str) -> dict:
         """Allow only a small, read-only SELECT subset before any generated SQL reaches the database."""
@@ -362,16 +399,28 @@ class SqlAgent:
         if "--" in cleaned or "/*" in cleaned or "*/" in cleaned:
             return {"valid": False, "reason": "SQL comments are not allowed"}
         if any(re.search(rf"\b{term}\b", lowered) for term in self.blocked_terms):
-            return {"valid": False, "reason": "write or schema-changing SQL is not allowed"}
+            return {
+                "valid": False,
+                "reason": "write or schema-changing SQL is not allowed",
+            }
         selected_table = self._selected_table(lowered)
         if not selected_table:
-            return {"valid": False, "reason": "queries must read from an allowed reporting table"}
+            return {
+                "valid": False,
+                "reason": "queries must read from an allowed reporting table",
+            }
         if re.search(r"\b(join|union|intersect|except)\b", lowered):
-            return {"valid": False, "reason": "joins and set operations are not allowed in this report query"}
+            return {
+                "valid": False,
+                "reason": "joins and set operations are not allowed in this report query",
+            }
 
         unknown_identifiers = self._unknown_identifiers(lowered, selected_table)
         if unknown_identifiers:
-            return {"valid": False, "reason": f"unknown identifier: {unknown_identifiers[0]}"}
+            return {
+                "valid": False,
+                "reason": f"unknown identifier: {unknown_identifiers[0]}",
+            }
 
         if not re.search(r"\blimit\s+\d+\b", lowered):
             cleaned = f"{cleaned} LIMIT 50"
@@ -387,21 +436,52 @@ class SqlAgent:
 
     def _unknown_identifiers(self, lowered_sql: str, selected_table: str) -> list[str]:
         keywords = {
-            "as", "asc", "and", "between", "by", "case", "desc", "distinct", "else", "end",
-            "from", "group", "having", "in", "is", "like", "limit", "not", "null", "or",
-            "order", "select", "then", "when", "where",
+            "as",
+            "asc",
+            "and",
+            "between",
+            "by",
+            "case",
+            "desc",
+            "distinct",
+            "else",
+            "end",
+            "from",
+            "group",
+            "having",
+            "in",
+            "is",
+            "like",
+            "limit",
+            "not",
+            "null",
+            "or",
+            "order",
+            "select",
+            "then",
+            "when",
+            "where",
         }
         text = re.sub(r"'[^']*'", " ", lowered_sql)
         text = re.sub(r"\bas\s+[a-z_][a-z0-9_]*", " as ", text)
         identifiers = re.findall(r"\b[a-z_][a-z0-9_]*\b", text)
-        allowed = self.allowed_tables[selected_table] | self.allowed_functions | keywords | set(self.allowed_tables)
-        return sorted({identifier for identifier in identifiers if identifier not in allowed})
+        allowed = (
+            self.allowed_tables[selected_table]
+            | self.allowed_functions
+            | keywords
+            | set(self.allowed_tables)
+        )
+        return sorted(
+            {identifier for identifier in identifiers if identifier not in allowed}
+        )
 
     def _schema_context(self, question: str) -> list[dict]:
         """Retrieve the most relevant table descriptions for the user's SQL question."""
         query_embedding = self.ollama_client.embed(question)
         if query_embedding and self.database_service:
-            vector_result = self.database_service.search_schema_chunks(query_embedding, limit=2)
+            vector_result = self.database_service.search_schema_chunks(
+                query_embedding, limit=2
+            )
             chunks = vector_result.get("chunks", [])
             if chunks:
                 return [
@@ -422,7 +502,12 @@ class SqlAgent:
             if query_embedding:
                 chunk_embedding = self.ollama_client.embed(chunk.text)
                 if chunk_embedding:
-                    score = max(score, self._cosine_similarity(tuple(query_embedding), tuple(chunk_embedding)))
+                    score = max(
+                        score,
+                        self._cosine_similarity(
+                            tuple(query_embedding), tuple(chunk_embedding)
+                        ),
+                    )
             scored.append((score, chunk))
 
         scored.sort(key=lambda item: item[0], reverse=True)
@@ -437,13 +522,15 @@ class SqlAgent:
             }
             for score, chunk in selected
             if score > 0
-        ] or [{
-            "id": self.schema_chunks[0].id,
-            "table": self.schema_chunks[0].table,
-            "score": 0.0,
-            "schema": self.schema_chunks[0].text,
-            "source": "code-fallback",
-        }]
+        ] or [
+            {
+                "id": self.schema_chunks[0].id,
+                "table": self.schema_chunks[0].table,
+                "score": 0.0,
+                "schema": self.schema_chunks[0].text,
+                "source": "code-fallback",
+            }
+        ]
 
     def _sql_prompt(self, question: str, schema_context: list[dict]) -> str:
         schema_text = "\n\n".join(f"- {chunk['schema']}" for chunk in schema_context)
@@ -490,10 +577,28 @@ User question: {question}
 
     def _asks_for_latest_transfer(self, normalized: str) -> bool:
         latest_terms = ("last", "latest", "newest", "most recent")
-        transfer_terms = ("transaction", "transactions", "transfer", "transfers", "payment", "payments")
-        return any(term in normalized for term in latest_terms) and any(term in normalized for term in transfer_terms)
+        transfer_terms = (
+            "transaction",
+            "transactions",
+            "transfer",
+            "transfers",
+            "payment",
+            "payments",
+        )
+        return any(term in normalized for term in latest_terms) and any(
+            term in normalized for term in transfer_terms
+        )
 
     def _asks_for_recent_transfers(self, normalized: str) -> bool:
         recent_terms = ("recent", "list", "show", "all")
-        transfer_terms = ("transaction", "transactions", "transfer", "transfers", "payment", "payments")
-        return any(term in normalized for term in recent_terms) and any(term in normalized for term in transfer_terms)
+        transfer_terms = (
+            "transaction",
+            "transactions",
+            "transfer",
+            "transfers",
+            "payment",
+            "payments",
+        )
+        return any(term in normalized for term in recent_terms) and any(
+            term in normalized for term in transfer_terms
+        )

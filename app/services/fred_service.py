@@ -44,26 +44,34 @@ class FredService:
                 **self.series_observations(series_id, limit=1),
             }
 
-        return {"provider": self.provider, "configured": True, "observations": observations}
+        return {
+            "provider": self.provider,
+            "configured": True,
+            "observations": observations,
+        }
 
     def series_observations(self, series_id: str, limit: int = 12) -> dict:
         if not self.is_configured():
             return {"configured": False, "error": "FRED_API_KEY is not configured."}
 
-        query = urlencode({
-            "series_id": series_id,
-            "api_key": settings.fred_api_key,
-            "file_type": "json",
-            "sort_order": "desc",
-            "limit": limit,
-        })
+        query = urlencode(
+            {
+                "series_id": series_id,
+                "api_key": settings.fred_api_key,
+                "file_type": "json",
+                "sort_order": "desc",
+                "limit": limit,
+            }
+        )
         request = Request(
             f"{settings.fred_base_url}/series/observations?{query}",
             headers={"User-Agent": "FinFX-AI-Assistant/0.1"},
         )
 
         try:
-            with urlopen(request, timeout=settings.provider_timeout_seconds) as response:
+            with urlopen(
+                request, timeout=settings.provider_timeout_seconds
+            ) as response:
                 payload = json.loads(response.read().decode("utf-8"))
         except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
             return {"configured": True, "error": str(exc)}

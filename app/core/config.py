@@ -30,7 +30,9 @@ class Settings:
     openai_chat_model: str = os.getenv("OPENAI_CHAT_MODEL", "gpt-4o-mini")
     anthropic_base_url: str = "https://api.anthropic.com/v1"
     anthropic_api_key: str | None = os.getenv("ANTHROPIC_API_KEY")
-    anthropic_chat_model: str = os.getenv("ANTHROPIC_CHAT_MODEL", "claude-3-5-haiku-latest")
+    anthropic_chat_model: str = os.getenv(
+        "ANTHROPIC_CHAT_MODEL", "claude-3-5-haiku-latest"
+    )
     rag_top_k: int = 3
     rag_min_vector_score: float = float(os.getenv("RAG_MIN_VECTOR_SCORE", "0.55"))
     alpha_vantage_base_url: str = "https://www.alphavantage.co/query"

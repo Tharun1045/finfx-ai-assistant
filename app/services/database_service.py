@@ -102,10 +102,23 @@ class DatabaseService:
             rows = cursor.fetchall()
 
         keys = [
-            "transfer_id", "created_at", "customer_name", "from_currency", "to_currency",
-            "amount", "converted_amount", "rate", "beneficiary_country", "purpose", "status", "provider",
+            "transfer_id",
+            "created_at",
+            "customer_name",
+            "from_currency",
+            "to_currency",
+            "amount",
+            "converted_amount",
+            "rate",
+            "beneficiary_country",
+            "purpose",
+            "status",
+            "provider",
         ]
-        return {"database_status": status, "transfers": [dict(zip(keys, row)) for row in rows]}
+        return {
+            "database_status": status,
+            "transfers": [dict(zip(keys, row)) for row in rows],
+        }
 
     def transfer_summary(self) -> dict:
         records = self.list_transfers(limit=500)
@@ -235,8 +248,16 @@ class DatabaseService:
             rows = cursor.fetchall()
 
         keys = [
-            "usage_id", "created_at", "question_id", "call_type", "provider", "model", "success",
-            "input_tokens", "output_tokens", "total_tokens",
+            "usage_id",
+            "created_at",
+            "question_id",
+            "call_type",
+            "provider",
+            "model",
+            "success",
+            "input_tokens",
+            "output_tokens",
+            "total_tokens",
         ]
         logs = [dict(zip(keys, row)) for row in rows]
         for log in logs:
@@ -287,8 +308,18 @@ class DatabaseService:
             rows = cursor.fetchall()
 
         keys = [
-            "question_id", "created_at", "surface", "question_text", "route_mode", "intent",
-            "used_rag", "used_sql", "used_fx", "citations_count", "status", "latency_ms",
+            "question_id",
+            "created_at",
+            "surface",
+            "question_text",
+            "route_mode",
+            "intent",
+            "used_rag",
+            "used_sql",
+            "used_fx",
+            "citations_count",
+            "status",
+            "latency_ms",
         ]
         questions = [dict(zip(keys, row)) for row in rows]
         usage_logs = self.list_llm_usage_logs(limit=2000)["logs"]
@@ -297,12 +328,16 @@ class DatabaseService:
             question_id = log.get("question_id")
             if not question_id:
                 continue
-            usage_by_question.setdefault(question_id, {"llm_calls": 0, "total_tokens": 0})
+            usage_by_question.setdefault(
+                question_id, {"llm_calls": 0, "total_tokens": 0}
+            )
             usage_by_question[question_id]["llm_calls"] += 1
             usage_by_question[question_id]["total_tokens"] += log["total_tokens"]
 
         for question in questions:
-            linked_usage = usage_by_question.get(question["question_id"], {"llm_calls": 0, "total_tokens": 0})
+            linked_usage = usage_by_question.get(
+                question["question_id"], {"llm_calls": 0, "total_tokens": 0}
+            )
             question.update(linked_usage)
             question["used_rag"] = bool(question["used_rag"])
             question["used_sql"] = bool(question["used_sql"])
@@ -312,9 +347,14 @@ class DatabaseService:
             "questions": len(questions),
             "llm_calls": sum(question["llm_calls"] for question in questions),
             "total_tokens": sum(question["total_tokens"] for question in questions),
-            "average_latency_ms": round(
-                sum(question["latency_ms"] for question in questions) / len(questions)
-            ) if questions else 0,
+            "average_latency_ms": (
+                round(
+                    sum(question["latency_ms"] for question in questions)
+                    / len(questions)
+                )
+                if questions
+                else 0
+            ),
         }
 
         return {
@@ -337,7 +377,9 @@ class DatabaseService:
         try:
             with self._connection() as connection:
                 self._ensure_vector_schema(connection)
-                cursor = self._execute(connection, "SELECT COUNT(*) FROM knowledge_chunks")
+                cursor = self._execute(
+                    connection, "SELECT COUNT(*) FROM knowledge_chunks"
+                )
                 count = cursor.fetchone()[0]
                 return {
                     "available": True,
@@ -409,7 +451,10 @@ class DatabaseService:
             rows = cursor.fetchall()
 
         keys = ["id", "source", "heading", "text", "score"]
-        return {"database_status": status, "chunks": [dict(zip(keys, row)) for row in rows]}
+        return {
+            "database_status": status,
+            "chunks": [dict(zip(keys, row)) for row in rows],
+        }
 
     def schema_vector_status(self) -> dict:
         if not self.database_url.startswith(("postgresql", "postgres")):
@@ -492,13 +537,20 @@ class DatabaseService:
             rows = cursor.fetchall()
 
         keys = ["id", "table", "schema", "score"]
-        return {"database_status": status, "chunks": [dict(zip(keys, row)) for row in rows]}
+        return {
+            "database_status": status,
+            "chunks": [dict(zip(keys, row)) for row in rows],
+        }
 
     @contextmanager
     def _connection(self):
         if self.database_url.startswith("sqlite"):
             path = self.database_url.replace("sqlite:///", "", 1)
-            Path(path).parent.mkdir(parents=True, exist_ok=True) if Path(path).parent != Path(".") else None
+            (
+                Path(path).parent.mkdir(parents=True, exist_ok=True)
+                if Path(path).parent != Path(".")
+                else None
+            )
             connection = sqlite3.connect(path)
             try:
                 yield connection
@@ -510,7 +562,9 @@ class DatabaseService:
             try:
                 import psycopg
             except ImportError as exc:
-                raise RuntimeError("psycopg is not installed. Run pip install -r requirements.txt.") from exc
+                raise RuntimeError(
+                    "psycopg is not installed. Run pip install -r requirements.txt."
+                ) from exc
 
             connection = psycopg.connect(self.database_url)
             try:
@@ -559,7 +613,9 @@ class DatabaseService:
             )
             """,
         )
-        self._ensure_column(connection, "llm_usage_logs", "question_id", "question_id TEXT")
+        self._ensure_column(
+            connection, "llm_usage_logs", "question_id", "question_id TEXT"
+        )
         self._execute(
             connection,
             """
@@ -669,7 +725,9 @@ class DatabaseService:
             sql = sql.replace("?", "%s")
         return connection.execute(sql, params)
 
-    def _ensure_column(self, connection, table: str, column: str, definition: str) -> None:
+    def _ensure_column(
+        self, connection, table: str, column: str, definition: str
+    ) -> None:
         if self.database_url.startswith(("postgresql", "postgres")):
             cursor = self._execute(
                 connection,
@@ -697,7 +755,10 @@ class DatabaseService:
         groups: dict[str, dict] = {}
         for log in logs:
             group = log[key]
-            groups.setdefault(group, {"calls": 0, "input_tokens": 0, "output_tokens": 0, "total_tokens": 0})
+            groups.setdefault(
+                group,
+                {"calls": 0, "input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
+            )
             groups[group]["calls"] += 1
             groups[group]["input_tokens"] += log["input_tokens"]
             groups[group]["output_tokens"] += log["output_tokens"]
@@ -709,7 +770,9 @@ class DatabaseService:
         groups: dict[str, dict] = {}
         for question in questions:
             group = question.get(key) or "unknown"
-            groups.setdefault(group, {"questions": 0, "llm_calls": 0, "total_tokens": 0})
+            groups.setdefault(
+                group, {"questions": 0, "llm_calls": 0, "total_tokens": 0}
+            )
             groups[group]["questions"] += 1
             groups[group]["llm_calls"] += question["llm_calls"]
             groups[group]["total_tokens"] += question["total_tokens"]

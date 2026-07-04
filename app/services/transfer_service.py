@@ -3,7 +3,9 @@ from app.services.fx_service import FxService
 
 
 class TransferService:
-    def __init__(self, fx_service: FxService, database_service: DatabaseService) -> None:
+    def __init__(
+        self, fx_service: FxService, database_service: DatabaseService
+    ) -> None:
         self.fx_service = fx_service
         self.database_service = database_service
 
@@ -15,7 +17,11 @@ class TransferService:
             use_live=True,
         )
         if "error" in conversion:
-            return {"stored": False, "error": conversion["error"], "conversion": conversion}
+            return {
+                "stored": False,
+                "error": conversion["error"],
+                "conversion": conversion,
+            }
 
         record = {
             "customer_name": payload.customer_name,

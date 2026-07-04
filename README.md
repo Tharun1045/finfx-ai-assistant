@@ -16,6 +16,21 @@ The project is designed for learning and demonstration. All sample data and know
 - Supports optional OpenAI or Anthropic chat providers while keeping embeddings local.
 - Uses pgvector for persistent document RAG and persistent Admin SQL schema RAG.
 
+## Architecture At A Glance
+
+```mermaid
+flowchart TD
+    User["User"] --> FastAPI["FastAPI"]
+    FastAPI --> Router["Router"]
+    Router --> FX["FX Tool"]
+    Router --> RAG["RAG"]
+    Router --> SQL["SQL Agent"]
+    FX --> Data["Supabase + pgvector"]
+    RAG --> Data
+    SQL --> Data
+    Data --> LLM["Ollama / Optional Cloud LLM"]
+```
+
 ## Documentation
 
 - [Local setup](docs/LOCAL_SETUP.md) - required software, `.env`, Ollama, Supabase, vector indexing, and common issues.

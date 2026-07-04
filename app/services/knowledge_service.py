@@ -22,7 +22,9 @@ class EmbeddedChunk:
 
 
 class KnowledgeService:
-    def __init__(self, ollama_client: OllamaClient | None = None, database_service=None) -> None:
+    def __init__(
+        self, ollama_client: OllamaClient | None = None, database_service=None
+    ) -> None:
         self.knowledge_dir = settings.data_dir / "knowledge"
         self.ollama_client = ollama_client or OllamaClient()
         self.database_service = database_service
@@ -38,12 +40,14 @@ class KnowledgeService:
                 if not cleaned:
                     continue
                 heading = self._extract_heading(cleaned)
-                chunks.append(KnowledgeChunk(
-                    id=f"{path.stem}-{index}",
-                    source=path.name,
-                    heading=heading,
-                    text=cleaned,
-                ))
+                chunks.append(
+                    KnowledgeChunk(
+                        id=f"{path.stem}-{index}",
+                        source=path.name,
+                        heading=heading,
+                        text=cleaned,
+                    )
+                )
         return tuple(chunks)
 
     @lru_cache(maxsize=1)
@@ -73,10 +77,16 @@ class KnowledgeService:
 
         generated_answer = None
         if use_llm:
-            generated_answer = self._generate_grounded_answer(question, [chunk for _, chunk in retrieved])
+            generated_answer = self._generate_grounded_answer(
+                question, [chunk for _, chunk in retrieved]
+            )
 
         if generated_answer:
-            mode = "ollama-pgvector-rag" if retrieval_mode == "supabase-pgvector-rag" else "ollama-rag"
+            mode = (
+                "ollama-pgvector-rag"
+                if retrieval_mode == "supabase-pgvector-rag"
+                else "ollama-rag"
+            )
             answer = generated_answer
             llm_available = True
         else:
@@ -121,12 +131,15 @@ class KnowledgeService:
             if not embedding:
                 skipped += 1
                 continue
-            self.database_service.upsert_knowledge_chunk({
-                "id": chunk.id,
-                "source": chunk.source,
-                "heading": chunk.heading,
-                "text": chunk.text,
-            }, embedding)
+            self.database_service.upsert_knowledge_chunk(
+                {
+                    "id": chunk.id,
+                    "source": chunk.source,
+                    "heading": chunk.heading,
+                    "text": chunk.text,
+                },
+                embedding,
+            )
             indexed += 1
 
         return {
@@ -148,7 +161,9 @@ class KnowledgeService:
         """Search pgvector first, then fall back to local semantic search or keyword matching."""
         query_embedding = self.ollama_client.embed(question)
         if query_embedding and self.database_service:
-            vector_result = self.database_service.search_knowledge_chunks(query_embedding, settings.rag_top_k)
+            vector_result = self.database_service.search_knowledge_chunks(
+                query_embedding, settings.rag_top_k
+            )
             vector_chunks = [
                 (
                     float(row["score"]),
@@ -162,21 +177,34 @@ class KnowledgeService:
                 for row in vector_result.get("chunks", [])
             ]
             if vector_chunks:
-                return self._filter_relevant_chunks(vector_chunks), "supabase-pgvector-rag"
+                return (
+                    self._filter_relevant_chunks(vector_chunks),
+                    "supabase-pgvector-rag",
+                )
 
         embedded = self.embedded_chunks() if query_embedding else ()
 
         if query_embedding and embedded:
             scored = [
-                (self._cosine_similarity(tuple(query_embedding), embedded_chunk.embedding), embedded_chunk.chunk)
+                (
+                    self._cosine_similarity(
+                        tuple(query_embedding), embedded_chunk.embedding
+                    ),
+                    embedded_chunk.chunk,
+                )
                 for embedded_chunk in embedded
             ]
             scored.sort(key=lambda item: item[0], reverse=True)
-            return self._filter_relevant_chunks(scored[: settings.rag_top_k]), "semantic-retrieval"
+            return (
+                self._filter_relevant_chunks(scored[: settings.rag_top_k]),
+                "semantic-retrieval",
+            )
 
         return self._keyword_retrieve(question), "keyword-retrieval"
 
-    def _generate_grounded_answer(self, question: str, chunks: list[KnowledgeChunk]) -> str | None:
+    def _generate_grounded_answer(
+        self, question: str, chunks: list[KnowledgeChunk]
+    ) -> str | None:
         context = "\n\n".join(
             f"Source: {chunk.source} | Section: {chunk.heading}\n{chunk.text}"
             for chunk in chunks
@@ -207,7 +235,9 @@ Answer:"""
         return scored[: settings.rag_top_k]
 
     @staticmethod
-    def _filter_relevant_chunks(scored_chunks: list[tuple[float, KnowledgeChunk]]) -> list[tuple[float, KnowledgeChunk]]:
+    def _filter_relevant_chunks(
+        scored_chunks: list[tuple[float, KnowledgeChunk]],
+    ) -> list[tuple[float, KnowledgeChunk]]:
         return [
             (score, chunk)
             for score, chunk in scored_chunks
@@ -230,8 +260,25 @@ Answer:"""
 
     @staticmethod
     def _tokenize(text: str) -> set[str]:
-        stop_words = {"the", "is", "a", "an", "to", "for", "and", "or", "of", "in", "what", "how"}
-        return {token for token in re.findall(r"[a-zA-Z0-9]+", text.lower()) if token not in stop_words}
+        stop_words = {
+            "the",
+            "is",
+            "a",
+            "an",
+            "to",
+            "for",
+            "and",
+            "or",
+            "of",
+            "in",
+            "what",
+            "how",
+        }
+        return {
+            token
+            for token in re.findall(r"[a-zA-Z0-9]+", text.lower())
+            if token not in stop_words
+        }
 
     @staticmethod
     def _cosine_similarity(left: tuple[float, ...], right: tuple[float, ...]) -> float:

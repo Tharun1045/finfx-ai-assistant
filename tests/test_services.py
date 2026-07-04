@@ -6,7 +6,11 @@ from app.services.sql_agent import SqlAgent
 from app.services.tool_planner import ToolPlan
 from app.services.database_service import DatabaseService
 from app.services.transaction_service import TransactionService
-from app.services.ollama_client import LlmUsageTracker, OllamaClient, current_question_id
+from app.services.ollama_client import (
+    LlmUsageTracker,
+    OllamaClient,
+    current_question_id,
+)
 
 
 class OfflineOllamaClient:
@@ -39,13 +43,15 @@ class FakeVectorDatabase:
     def search_knowledge_chunks(self, embedding, limit: int):
         return {
             "database_status": self.vector_status(),
-            "chunks": [{
-                "id": "fake-0",
-                "source": "fake-policy.md",
-                "heading": "Fake policy",
-                "text": "High value transfers require identity verification and source of funds checks.",
-                "score": 0.98,
-            }],
+            "chunks": [
+                {
+                    "id": "fake-0",
+                    "source": "fake-policy.md",
+                    "heading": "Fake policy",
+                    "text": "High value transfers require identity verification and source of funds checks.",
+                    "score": 0.98,
+                }
+            ],
         }
 
 
@@ -60,16 +66,18 @@ class FakeSchemaVectorDatabase:
     def search_schema_chunks(self, embedding, limit: int):
         return {
             "database_status": self.schema_vector_status(),
-            "chunks": [{
-                "id": "assistant-question-logs",
-                "table": "assistant_question_logs",
-                "schema": (
-                    "Table assistant_question_logs stores one row for each user question. "
-                    "Columns: question_id, created_at, surface, question_text, route_mode, "
-                    "intent, used_rag, used_sql, used_fx, citations_count, status, latency_ms."
-                ),
-                "score": 0.97,
-            }],
+            "chunks": [
+                {
+                    "id": "assistant-question-logs",
+                    "table": "assistant_question_logs",
+                    "schema": (
+                        "Table assistant_question_logs stores one row for each user question. "
+                        "Columns: question_id, created_at, surface, question_text, route_mode, "
+                        "intent, used_rag, used_sql, used_fx, citations_count, status, latency_ms."
+                    ),
+                    "score": 0.97,
+                }
+            ],
         }
 
     def status(self):
@@ -86,13 +94,15 @@ class WeakVectorDatabase(FakeVectorDatabase):
     def search_knowledge_chunks(self, embedding, limit: int):
         return {
             "database_status": self.vector_status(),
-            "chunks": [{
-                "id": "weak-0",
-                "source": "verification-policy.md",
-                "heading": "Required documents",
-                "text": "Customers may be asked for proof of identity and source of funds.",
-                "score": 0.42,
-            }],
+            "chunks": [
+                {
+                    "id": "weak-0",
+                    "source": "verification-policy.md",
+                    "heading": "Required documents",
+                    "text": "Customers may be asked for proof of identity and source of funds.",
+                    "score": 0.42,
+                }
+            ],
         }
 
 
@@ -139,7 +149,14 @@ class StaticTransactionPlanner:
 
 
 class StaticTrendFxService(FxService):
-    def trend_summary(self, from_currency: str, to_currency: str, days: int = 30, average_days: int = 20, today=None):
+    def trend_summary(
+        self,
+        from_currency: str,
+        to_currency: str,
+        days: int = 30,
+        average_days: int = 20,
+        today=None,
+    ):
         return {
             "from_currency": from_currency,
             "to_currency": to_currency,
@@ -260,7 +277,9 @@ def test_live_rates_fall_back_to_demo_when_disabled() -> None:
 
 def test_provider_status_lists_optional_sources() -> None:
     status = ProviderService().status()
-    optional_names = {provider["provider"] for provider in status["optional_api_key_providers"]}
+    optional_names = {
+        provider["provider"] for provider in status["optional_api_key_providers"]
+    }
     assert "alpha-vantage" in optional_names
     assert "fred" in optional_names
     assert status["active_without_keys"][0]["provider"] == "frankfurter"
@@ -294,8 +313,19 @@ def test_cloud_llm_provider_without_key_fails_gracefully() -> None:
 
 def test_llm_usage_tracker_rolls_up_calls_and_tokens() -> None:
     tracker = LlmUsageTracker()
-    tracker.record("json", "ollama", "llama3.2:3b", "hello world", '{"ok": true}', success=True)
-    tracker.record("chat", "openai", "gpt-4o-mini", "prompt", "answer", success=True, input_tokens=10, output_tokens=4)
+    tracker.record(
+        "json", "ollama", "llama3.2:3b", "hello world", '{"ok": true}', success=True
+    )
+    tracker.record(
+        "chat",
+        "openai",
+        "gpt-4o-mini",
+        "prompt",
+        "answer",
+        success=True,
+        input_tokens=10,
+        output_tokens=4,
+    )
 
     summary = tracker.summary()
 
@@ -310,7 +340,9 @@ def test_llm_usage_tracker_attaches_current_question_id() -> None:
     tracker = LlmUsageTracker()
     token = current_question_id.set("Q-TEST")
     try:
-        tracker.record("chat", "ollama", "llama3.2:3b", "prompt", "answer", success=True)
+        tracker.record(
+            "chat", "ollama", "llama3.2:3b", "prompt", "answer", success=True
+        )
     finally:
         current_question_id.reset(token)
 
@@ -319,33 +351,37 @@ def test_llm_usage_tracker_attaches_current_question_id() -> None:
 
 def test_database_service_persists_sqlite_transfer(tmp_path) -> None:
     database = DatabaseService(f"sqlite:///{tmp_path / 'test.db'}")
-    result = database.create_transfer({
-        "customer_name": "Test Customer",
-        "from_currency": "GBP",
-        "to_currency": "INR",
-        "amount": 100,
-        "converted_amount": 12639,
-        "rate": 126.39,
-        "beneficiary_country": "India",
-        "purpose": "Test",
-        "provider": "frankfurter",
-    })
+    result = database.create_transfer(
+        {
+            "customer_name": "Test Customer",
+            "from_currency": "GBP",
+            "to_currency": "INR",
+            "amount": 100,
+            "converted_amount": 12639,
+            "rate": 126.39,
+            "beneficiary_country": "India",
+            "purpose": "Test",
+            "provider": "frankfurter",
+        }
+    )
     assert result["stored"] is True
     assert database.list_transfers()["transfers"][0]["customer_name"] == "Test Customer"
 
 
 def test_database_service_persists_llm_usage_logs(tmp_path) -> None:
     database = DatabaseService(f"sqlite:///{tmp_path / 'test.db'}")
-    stored = database.create_llm_usage_log({
-        "timestamp": "2026-07-04T10:00:00+00:00",
-        "call_type": "chat",
-        "provider": "ollama",
-        "model": "llama3.2:3b",
-        "success": True,
-        "input_tokens": 100,
-        "output_tokens": 25,
-        "total_tokens": 125,
-    })
+    stored = database.create_llm_usage_log(
+        {
+            "timestamp": "2026-07-04T10:00:00+00:00",
+            "call_type": "chat",
+            "provider": "ollama",
+            "model": "llama3.2:3b",
+            "success": True,
+            "input_tokens": 100,
+            "output_tokens": 25,
+            "total_tokens": 125,
+        }
+    )
 
     summary = database.llm_usage_summary()
 
@@ -358,31 +394,35 @@ def test_database_service_persists_llm_usage_logs(tmp_path) -> None:
 
 def test_database_service_links_question_logs_to_llm_usage(tmp_path) -> None:
     database = DatabaseService(f"sqlite:///{tmp_path / 'test.db'}")
-    database.create_assistant_question_log({
-        "question_id": "Q-LINKED",
-        "created_at": "2026-07-04T10:00:00+00:00",
-        "surface": "admin_reports_sql",
-        "question_text": "which question used most tokens",
-        "route_mode": "llm-generated-sql",
-        "intent": "sql_analytics",
-        "used_rag": True,
-        "used_sql": True,
-        "used_fx": False,
-        "citations_count": 0,
-        "status": "success",
-        "latency_ms": 120,
-    })
-    database.create_llm_usage_log({
-        "timestamp": "2026-07-04T10:00:01+00:00",
-        "question_id": "Q-LINKED",
-        "call_type": "json",
-        "provider": "ollama",
-        "model": "llama3.2:3b",
-        "success": True,
-        "input_tokens": 80,
-        "output_tokens": 20,
-        "total_tokens": 100,
-    })
+    database.create_assistant_question_log(
+        {
+            "question_id": "Q-LINKED",
+            "created_at": "2026-07-04T10:00:00+00:00",
+            "surface": "admin_reports_sql",
+            "question_text": "which question used most tokens",
+            "route_mode": "llm-generated-sql",
+            "intent": "sql_analytics",
+            "used_rag": True,
+            "used_sql": True,
+            "used_fx": False,
+            "citations_count": 0,
+            "status": "success",
+            "latency_ms": 120,
+        }
+    )
+    database.create_llm_usage_log(
+        {
+            "timestamp": "2026-07-04T10:00:01+00:00",
+            "question_id": "Q-LINKED",
+            "call_type": "json",
+            "provider": "ollama",
+            "model": "llama3.2:3b",
+            "success": True,
+            "input_tokens": 80,
+            "output_tokens": 20,
+            "total_tokens": 100,
+        }
+    )
 
     summary = database.assistant_question_summary()
 
@@ -413,7 +453,9 @@ def test_suspicious_transactions_include_reasons() -> None:
 
 
 def test_knowledge_answer_returns_citation_with_offline_fallback() -> None:
-    answer = KnowledgeService(ollama_client=OfflineOllamaClient()).answer("What documents are required?")
+    answer = KnowledgeService(ollama_client=OfflineOllamaClient()).answer(
+        "What documents are required?"
+    )
     assert answer["citations"]
     assert answer["mode"] == "keyword-retrieval"
     assert "proof of identity" in answer["answer"].lower()
@@ -451,18 +493,22 @@ def test_sql_agent_without_database_explains_supabase_only() -> None:
 
 def test_sql_agent_reads_last_persisted_transfer(tmp_path) -> None:
     database = DatabaseService(f"sqlite:///{tmp_path / 'test.db'}")
-    database.create_transfer({
-        "customer_name": "Latest Customer",
-        "from_currency": "GBP",
-        "to_currency": "INR",
-        "amount": 2500,
-        "converted_amount": 315975,
-        "rate": 126.39,
-        "beneficiary_country": "India",
-        "purpose": "Family support",
-        "provider": "frankfurter",
-    })
-    agent = SqlAgent(TransactionService(), database, ollama_client=OfflineOllamaClient())
+    database.create_transfer(
+        {
+            "customer_name": "Latest Customer",
+            "from_currency": "GBP",
+            "to_currency": "INR",
+            "amount": 2500,
+            "converted_amount": 315975,
+            "rate": 126.39,
+            "beneficiary_country": "India",
+            "purpose": "Family support",
+            "provider": "frankfurter",
+        }
+    )
+    agent = SqlAgent(
+        TransactionService(), database, ollama_client=OfflineOllamaClient()
+    )
 
     answer = agent.answer("last transaction")
 
@@ -472,18 +518,22 @@ def test_sql_agent_reads_last_persisted_transfer(tmp_path) -> None:
 
 def test_sql_agent_summarizes_persisted_transfers(tmp_path) -> None:
     database = DatabaseService(f"sqlite:///{tmp_path / 'test.db'}")
-    database.create_transfer({
-        "customer_name": "Summary Customer",
-        "from_currency": "GBP",
-        "to_currency": "EUR",
-        "amount": 1000,
-        "converted_amount": 1180,
-        "rate": 1.18,
-        "beneficiary_country": "Germany",
-        "purpose": "Supplier invoice",
-        "provider": "frankfurter",
-    })
-    agent = SqlAgent(TransactionService(), database, ollama_client=OfflineOllamaClient())
+    database.create_transfer(
+        {
+            "customer_name": "Summary Customer",
+            "from_currency": "GBP",
+            "to_currency": "EUR",
+            "amount": 1000,
+            "converted_amount": 1180,
+            "rate": 1.18,
+            "beneficiary_country": "Germany",
+            "purpose": "Supplier invoice",
+            "provider": "frankfurter",
+        }
+    )
+    agent = SqlAgent(
+        TransactionService(), database, ollama_client=OfflineOllamaClient()
+    )
 
     answer = agent.answer("transfer summary")
 
@@ -491,19 +541,23 @@ def test_sql_agent_summarizes_persisted_transfers(tmp_path) -> None:
     assert answer["result"]["total_persisted_transfers"] == 1
 
 
-def test_sql_agent_answers_currency_transaction_question_with_safe_template(tmp_path) -> None:
+def test_sql_agent_answers_currency_transaction_question_with_safe_template(
+    tmp_path,
+) -> None:
     database = DatabaseService(f"sqlite:///{tmp_path / 'test.db'}")
-    database.create_transfer({
-        "customer_name": "INR Customer",
-        "from_currency": "GBP",
-        "to_currency": "INR",
-        "amount": 5000,
-        "converted_amount": 631950,
-        "rate": 126.39,
-        "beneficiary_country": "India",
-        "purpose": "Family support",
-        "provider": "frankfurter",
-    })
+    database.create_transfer(
+        {
+            "customer_name": "INR Customer",
+            "from_currency": "GBP",
+            "to_currency": "INR",
+            "amount": 5000,
+            "converted_amount": 631950,
+            "rate": 126.39,
+            "beneficiary_country": "India",
+            "purpose": "Family support",
+            "provider": "frankfurter",
+        }
+    )
     agent = SqlAgent(TransactionService(), database, ollama_client=DangerousSqlClient())
 
     answer = agent.answer("any INR transaction?")
@@ -515,28 +569,32 @@ def test_sql_agent_answers_currency_transaction_question_with_safe_template(tmp_
 
 def test_sql_agent_answers_highest_amount_today_from_currency(tmp_path) -> None:
     database = DatabaseService(f"sqlite:///{tmp_path / 'test.db'}")
-    lower = database.create_transfer({
-        "customer_name": "Lower CAD Customer",
-        "from_currency": "CAD",
-        "to_currency": "INR",
-        "amount": 1000,
-        "converted_amount": 61000,
-        "rate": 61,
-        "beneficiary_country": "India",
-        "purpose": "Family support",
-        "provider": "frankfurter",
-    })["transfer"]["transfer_id"]
-    higher = database.create_transfer({
-        "customer_name": "Higher CAD Customer",
-        "from_currency": "CAD",
-        "to_currency": "USD",
-        "amount": 4000,
-        "converted_amount": 2900,
-        "rate": 0.725,
-        "beneficiary_country": "United States",
-        "purpose": "Supplier invoice",
-        "provider": "frankfurter",
-    })["transfer"]["transfer_id"]
+    lower = database.create_transfer(
+        {
+            "customer_name": "Lower CAD Customer",
+            "from_currency": "CAD",
+            "to_currency": "INR",
+            "amount": 1000,
+            "converted_amount": 61000,
+            "rate": 61,
+            "beneficiary_country": "India",
+            "purpose": "Family support",
+            "provider": "frankfurter",
+        }
+    )["transfer"]["transfer_id"]
+    higher = database.create_transfer(
+        {
+            "customer_name": "Higher CAD Customer",
+            "from_currency": "CAD",
+            "to_currency": "USD",
+            "amount": 4000,
+            "converted_amount": 2900,
+            "rate": 0.725,
+            "beneficiary_country": "United States",
+            "purpose": "Supplier invoice",
+            "provider": "frankfurter",
+        }
+    )["transfer"]["transfer_id"]
     assert lower != higher
     agent = SqlAgent(TransactionService(), database, ollama_client=DangerousSqlClient())
 
@@ -551,17 +609,19 @@ def test_sql_agent_answers_highest_amount_today_from_currency(tmp_path) -> None:
 
 def test_sql_agent_executes_valid_llm_generated_sql(tmp_path) -> None:
     database = DatabaseService(f"sqlite:///{tmp_path / 'test.db'}")
-    database.create_transfer({
-        "customer_name": "LLM Customer",
-        "from_currency": "GBP",
-        "to_currency": "INR",
-        "amount": 2500,
-        "converted_amount": 315975,
-        "rate": 126.39,
-        "beneficiary_country": "India",
-        "purpose": "Family support",
-        "provider": "frankfurter",
-    })
+    database.create_transfer(
+        {
+            "customer_name": "LLM Customer",
+            "from_currency": "GBP",
+            "to_currency": "INR",
+            "amount": 2500,
+            "converted_amount": 315975,
+            "rate": 126.39,
+            "beneficiary_country": "India",
+            "purpose": "Family support",
+            "provider": "frankfurter",
+        }
+    )
     agent = SqlAgent(TransactionService(), database, ollama_client=GeneratedSqlClient())
 
     answer = agent.answer("show high value transfers")
@@ -573,29 +633,35 @@ def test_sql_agent_executes_valid_llm_generated_sql(tmp_path) -> None:
 
 def test_sql_agent_uses_schema_rag_for_currency_pair_latest_payment(tmp_path) -> None:
     database = DatabaseService(f"sqlite:///{tmp_path / 'test.db'}")
-    database.create_transfer({
-        "customer_name": "Older Pair Customer",
-        "from_currency": "GBP",
-        "to_currency": "INR",
-        "amount": 1000,
-        "converted_amount": 126390,
-        "rate": 126.39,
-        "beneficiary_country": "India",
-        "purpose": "Family support",
-        "provider": "frankfurter",
-    })
-    database.create_transfer({
-        "customer_name": "Latest Pair Customer",
-        "from_currency": "GBP",
-        "to_currency": "INR",
-        "amount": 2500,
-        "converted_amount": 315975,
-        "rate": 126.39,
-        "beneficiary_country": "India",
-        "purpose": "Education fees",
-        "provider": "frankfurter",
-    })
-    agent = SqlAgent(TransactionService(), database, ollama_client=PairLatestSqlClient())
+    database.create_transfer(
+        {
+            "customer_name": "Older Pair Customer",
+            "from_currency": "GBP",
+            "to_currency": "INR",
+            "amount": 1000,
+            "converted_amount": 126390,
+            "rate": 126.39,
+            "beneficiary_country": "India",
+            "purpose": "Family support",
+            "provider": "frankfurter",
+        }
+    )
+    database.create_transfer(
+        {
+            "customer_name": "Latest Pair Customer",
+            "from_currency": "GBP",
+            "to_currency": "INR",
+            "amount": 2500,
+            "converted_amount": 315975,
+            "rate": 126.39,
+            "beneficiary_country": "India",
+            "purpose": "Education fees",
+            "provider": "frankfurter",
+        }
+    )
+    agent = SqlAgent(
+        TransactionService(), database, ollama_client=PairLatestSqlClient()
+    )
 
     answer = agent.answer("gbp to inr last payment")
 
@@ -605,31 +671,39 @@ def test_sql_agent_uses_schema_rag_for_currency_pair_latest_payment(tmp_path) ->
     assert answer["result"][0]["customer_name"] == "Latest Pair Customer"
 
 
-def test_sql_agent_uses_schema_rag_for_highest_transfer_when_llm_sql_is_valid(tmp_path) -> None:
+def test_sql_agent_uses_schema_rag_for_highest_transfer_when_llm_sql_is_valid(
+    tmp_path,
+) -> None:
     database = DatabaseService(f"sqlite:///{tmp_path / 'test.db'}")
-    database.create_transfer({
-        "customer_name": "Lower GBP Customer",
-        "from_currency": "GBP",
-        "to_currency": "INR",
-        "amount": 1000,
-        "converted_amount": 126390,
-        "rate": 126.39,
-        "beneficiary_country": "India",
-        "purpose": "Family support",
-        "provider": "frankfurter",
-    })
-    database.create_transfer({
-        "customer_name": "Higher GBP Customer",
-        "from_currency": "GBP",
-        "to_currency": "USD",
-        "amount": 5000,
-        "converted_amount": 6660,
-        "rate": 1.332,
-        "beneficiary_country": "United States",
-        "purpose": "Supplier invoice",
-        "provider": "frankfurter",
-    })
-    agent = SqlAgent(TransactionService(), database, ollama_client=HighestTransferSqlClient())
+    database.create_transfer(
+        {
+            "customer_name": "Lower GBP Customer",
+            "from_currency": "GBP",
+            "to_currency": "INR",
+            "amount": 1000,
+            "converted_amount": 126390,
+            "rate": 126.39,
+            "beneficiary_country": "India",
+            "purpose": "Family support",
+            "provider": "frankfurter",
+        }
+    )
+    database.create_transfer(
+        {
+            "customer_name": "Higher GBP Customer",
+            "from_currency": "GBP",
+            "to_currency": "USD",
+            "amount": 5000,
+            "converted_amount": 6660,
+            "rate": 1.332,
+            "beneficiary_country": "United States",
+            "purpose": "Supplier invoice",
+            "provider": "frankfurter",
+        }
+    )
+    agent = SqlAgent(
+        TransactionService(), database, ollama_client=HighestTransferSqlClient()
+    )
 
     answer = agent.answer("GBP TO INR HIGHEST TRANSFER")
 
@@ -641,16 +715,18 @@ def test_sql_agent_uses_schema_rag_for_highest_transfer_when_llm_sql_is_valid(tm
 
 def test_sql_agent_schema_rag_can_select_llm_usage_logs(tmp_path) -> None:
     database = DatabaseService(f"sqlite:///{tmp_path / 'test.db'}")
-    database.create_llm_usage_log({
-        "timestamp": "2026-07-04T10:00:00+00:00",
-        "call_type": "chat",
-        "provider": "ollama",
-        "model": "llama3.2:3b",
-        "success": True,
-        "input_tokens": 100,
-        "output_tokens": 25,
-        "total_tokens": 125,
-    })
+    database.create_llm_usage_log(
+        {
+            "timestamp": "2026-07-04T10:00:00+00:00",
+            "call_type": "chat",
+            "provider": "ollama",
+            "model": "llama3.2:3b",
+            "success": True,
+            "input_tokens": 100,
+            "output_tokens": 25,
+            "total_tokens": 125,
+        }
+    )
     agent = SqlAgent(TransactionService(), database, ollama_client=LlmUsageSqlClient())
 
     answer = agent.answer("which llm provider used most tokens")
@@ -688,30 +764,42 @@ def test_sql_agent_blocks_dangerous_llm_generated_sql(tmp_path) -> None:
 
 
 def test_assistant_routes_fx_questions_to_fx_tool() -> None:
-    assistant = AssistantService(FxService(), KnowledgeService(ollama_client=OfflineOllamaClient()))
+    assistant = AssistantService(
+        FxService(), KnowledgeService(ollama_client=OfflineOllamaClient())
+    )
     answer = assistant.answer("What is the GBP to INR rate?", use_llm=False)
     assert answer["mode"] == "fx-tool"
     assert "GBP" in answer["answer"]
 
 
 def test_assistant_routes_trend_questions_to_fx_trend_tool() -> None:
-    assistant = AssistantService(StaticTrendFxService(), KnowledgeService(ollama_client=OfflineOllamaClient()))
-    answer = assistant.answer("Show GBP/USD daily trend for the last 30 days and compare with 20-day average")
+    assistant = AssistantService(
+        StaticTrendFxService(), KnowledgeService(ollama_client=OfflineOllamaClient())
+    )
+    answer = assistant.answer(
+        "Show GBP/USD daily trend for the last 30 days and compare with 20-day average"
+    )
     assert answer["mode"] == "fx-tool"
     assert "20-day average" in answer["answer"]
     assert "1.321" in answer["answer"]
 
 
 def test_assistant_routes_forecast_questions_to_trend_outlook() -> None:
-    assistant = AssistantService(StaticTrendFxService(), KnowledgeService(ollama_client=OfflineOllamaClient()))
-    answer = assistant.answer("will GBP/INR increase in next 30 days when compared to today rate?")
+    assistant = AssistantService(
+        StaticTrendFxService(), KnowledgeService(ollama_client=OfflineOllamaClient())
+    )
+    answer = assistant.answer(
+        "will GBP/INR increase in next 30 days when compared to today rate?"
+    )
     assert answer["mode"] == "fx-outlook"
     assert "cannot guarantee" in answer["answer"]
     assert "recent momentum is positive" in answer["answer"]
 
 
 def test_assistant_routes_last_month_highest_rate_to_fx_tool() -> None:
-    assistant = AssistantService(FxService(), KnowledgeService(ollama_client=OfflineOllamaClient()))
+    assistant = AssistantService(
+        FxService(), KnowledgeService(ollama_client=OfflineOllamaClient())
+    )
     answer = assistant.answer("last month highesgt rate of GBP to INR", use_llm=False)
     assert answer["mode"] == "fx-tool"
     assert "highest GBP to INR rate last month" in answer["answer"]
@@ -748,7 +836,9 @@ def test_assistant_can_use_ai_router_for_fx_trend() -> None:
 
 
 def test_assistant_routes_failed_payment_support_to_knowledge_rag() -> None:
-    assistant = AssistantService(FxService(), KnowledgeService(ollama_client=OfflineOllamaClient()))
+    assistant = AssistantService(
+        FxService(), KnowledgeService(ollama_client=OfflineOllamaClient())
+    )
 
     answer = assistant.answer("my payment failed, what to do, how to contact support")
 
@@ -759,24 +849,28 @@ def test_assistant_routes_failed_payment_support_to_knowledge_rag() -> None:
 
 def test_assistant_blocks_ai_routed_sql_in_customer_view(tmp_path) -> None:
     database = DatabaseService(f"sqlite:///{tmp_path / 'test.db'}")
-    database.create_transfer({
-        "customer_name": "Router SQL Customer",
-        "from_currency": "GBP",
-        "to_currency": "INR",
-        "amount": 5000,
-        "converted_amount": 631950,
-        "rate": 126.39,
-        "beneficiary_country": "India",
-        "purpose": "Family support",
-        "provider": "frankfurter",
-    })
+    database.create_transfer(
+        {
+            "customer_name": "Router SQL Customer",
+            "from_currency": "GBP",
+            "to_currency": "INR",
+            "amount": 5000,
+            "converted_amount": 631950,
+            "rate": 126.39,
+            "beneficiary_country": "India",
+            "purpose": "Family support",
+            "provider": "frankfurter",
+        }
+    )
     client = OfflineOllamaClient()
     assistant = AssistantService(
         FxService(),
         KnowledgeService(ollama_client=client),
         tool_planner=StaticTransactionPlanner(),
         ollama_client=client,
-        sql_agent=SqlAgent(TransactionService(), database, ollama_client=DangerousSqlClient()),
+        sql_agent=SqlAgent(
+            TransactionService(), database, ollama_client=DangerousSqlClient()
+        ),
     )
 
     answer = assistant.answer("highest GBP amount transferred")

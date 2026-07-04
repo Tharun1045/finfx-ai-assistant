@@ -74,7 +74,9 @@ def persisted_assistant_questions() -> dict:
 
 
 @router.get("/providers/alpha-vantage/fx-daily")
-def alpha_vantage_fx_daily(from_currency: str = "GBP", to_currency: str = "USD") -> dict:
+def alpha_vantage_fx_daily(
+    from_currency: str = "GBP", to_currency: str = "USD"
+) -> dict:
     return alpha_vantage_service.fx_daily(from_currency, to_currency)
 
 
@@ -85,7 +87,9 @@ def fred_latest_indicators() -> dict:
 
 @router.post("/fx/convert")
 def convert_currency(payload: ConvertRequest, live: bool = True) -> dict:
-    return fx_service.convert(payload.amount, payload.from_currency, payload.to_currency, use_live=live)
+    return fx_service.convert(
+        payload.amount, payload.from_currency, payload.to_currency, use_live=live
+    )
 
 
 @router.get("/transactions/summary")
@@ -118,7 +122,9 @@ def ask_knowledge(payload: AskRequest) -> dict:
     return _run_logged_question(
         surface="ask_ai",
         question=payload.question,
-        runner=lambda: assistant_service.answer(payload.question, use_llm=payload.use_llm),
+        runner=lambda: assistant_service.answer(
+            payload.question, use_llm=payload.use_llm
+        ),
     )
 
 
@@ -176,21 +182,27 @@ def _run_logged_question(surface: str, question: str, runner) -> dict:
         current_question_id.reset(token)
         if result:
             mode = result.get("mode", "unknown")
-            status = "blocked" if mode in {"llm-sql-blocked", "restricted-admin-data"} else status
-            database_service.create_assistant_question_log({
-                "question_id": question_id,
-                "created_at": created_at,
-                "surface": surface,
-                "question_text": question,
-                "route_mode": mode,
-                "intent": _question_intent(result),
-                "used_rag": "rag" in mode,
-                "used_sql": surface == "admin_reports_sql" or "sql" in mode,
-                "used_fx": _question_used_fx(result),
-                "citations_count": len(result.get("citations", [])),
-                "status": status,
-                "latency_ms": latency_ms,
-            })
+            status = (
+                "blocked"
+                if mode in {"llm-sql-blocked", "restricted-admin-data"}
+                else status
+            )
+            database_service.create_assistant_question_log(
+                {
+                    "question_id": question_id,
+                    "created_at": created_at,
+                    "surface": surface,
+                    "question_text": question,
+                    "route_mode": mode,
+                    "intent": _question_intent(result),
+                    "used_rag": "rag" in mode,
+                    "used_sql": surface == "admin_reports_sql" or "sql" in mode,
+                    "used_fx": _question_used_fx(result),
+                    "citations_count": len(result.get("citations", [])),
+                    "status": status,
+                    "latency_ms": latency_ms,
+                }
+            )
 
 
 def _question_intent(result: dict) -> str | None:
@@ -205,4 +217,7 @@ def _question_used_fx(result: dict) -> bool:
     if mode in {"fx-tool", "fx-outlook", "llm-tool-agent"}:
         return True
     citations = result.get("citations", [])
-    return any(str(citation).lower() in {"frankfurter", "alpha-vantage", "fred"} for citation in citations)
+    return any(
+        str(citation).lower() in {"frankfurter", "alpha-vantage", "fred"}
+        for citation in citations
+    )

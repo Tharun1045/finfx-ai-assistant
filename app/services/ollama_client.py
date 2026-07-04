@@ -7,8 +7,9 @@ from urllib.request import Request, urlopen
 
 from app.core.config import settings
 
-
-current_question_id: ContextVar[str | None] = ContextVar("current_question_id", default=None)
+current_question_id: ContextVar[str | None] = ContextVar(
+    "current_question_id", default=None
+)
 
 
 class LlmUsageTracker:
@@ -40,8 +41,16 @@ class LlmUsageTracker:
             "provider": provider,
             "model": model,
             "success": success,
-            "input_tokens": input_tokens if input_tokens is not None else self.estimate_tokens(input_text),
-            "output_tokens": output_tokens if output_tokens is not None else self.estimate_tokens(output_text or ""),
+            "input_tokens": (
+                input_tokens
+                if input_tokens is not None
+                else self.estimate_tokens(input_text)
+            ),
+            "output_tokens": (
+                output_tokens
+                if output_tokens is not None
+                else self.estimate_tokens(output_text or "")
+            ),
         }
         record["total_tokens"] = record["input_tokens"] + record["output_tokens"]
         with self._lock:
@@ -87,7 +96,9 @@ class LlmUsageTracker:
 
     @staticmethod
     def _rollup(target: dict[str, dict], key: str, record: dict) -> None:
-        target.setdefault(key, {"calls": 0, "input_tokens": 0, "output_tokens": 0, "total_tokens": 0})
+        target.setdefault(
+            key, {"calls": 0, "input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
+        )
         target[key]["calls"] += 1
         target[key]["input_tokens"] += record["input_tokens"]
         target[key]["output_tokens"] += record["output_tokens"]
@@ -109,7 +120,9 @@ class OllamaClient:
     def embed(self, text: str) -> list[float] | None:
         # Keep embeddings on local Ollama so the pgvector table stays at 768 dimensions.
         payload = {"model": settings.ollama_embedding_model, "prompt": text}
-        data = self._post_json("/api/embeddings", payload, timeout=settings.ollama_timeout_seconds)
+        data = self._post_json(
+            "/api/embeddings", payload, timeout=settings.ollama_timeout_seconds
+        )
         usage_tracker.record(
             "embedding",
             "ollama",
@@ -158,9 +171,13 @@ class OllamaClient:
             "stream": False,
             "options": {"temperature": 0.2, "num_predict": 500},
         }
-        data = self._post_json("/api/generate", payload, timeout=settings.ollama_timeout_seconds)
+        data = self._post_json(
+            "/api/generate", payload, timeout=settings.ollama_timeout_seconds
+        )
         if not data:
-            usage_tracker.record("chat", "ollama", payload["model"], prompt, success=False)
+            usage_tracker.record(
+                "chat", "ollama", payload["model"], prompt, success=False
+            )
             return None
         response = data.get("response")
         usage_tracker.record(
@@ -175,7 +192,9 @@ class OllamaClient:
         )
         return response.strip() if isinstance(response, str) else None
 
-    def _generate_ollama_json(self, prompt: str, model: str | None = None) -> dict | None:
+    def _generate_ollama_json(
+        self, prompt: str, model: str | None = None
+    ) -> dict | None:
         payload = {
             "model": model or settings.ollama_chat_model,
             "prompt": prompt,
@@ -183,9 +202,13 @@ class OllamaClient:
             "format": "json",
             "options": {"temperature": 0.0, "num_predict": 300},
         }
-        data = self._post_json("/api/generate", payload, timeout=settings.ollama_timeout_seconds)
+        data = self._post_json(
+            "/api/generate", payload, timeout=settings.ollama_timeout_seconds
+        )
         if not data or not isinstance(data.get("response"), str):
-            usage_tracker.record("json", "ollama", payload["model"], prompt, success=False)
+            usage_tracker.record(
+                "json", "ollama", payload["model"], prompt, success=False
+            )
             return None
 
         parsed = self._parse_json_object(data["response"])
@@ -203,7 +226,13 @@ class OllamaClient:
 
     def _generate_openai(self, prompt: str, model: str | None = None) -> str | None:
         if not self.openai_api_key:
-            usage_tracker.record("chat", "openai", model or settings.openai_chat_model, prompt, success=False)
+            usage_tracker.record(
+                "chat",
+                "openai",
+                model or settings.openai_chat_model,
+                prompt,
+                success=False,
+            )
             return None
         selected_model = model or settings.openai_chat_model
         payload = {
@@ -221,7 +250,9 @@ class OllamaClient:
         try:
             content = data["choices"][0]["message"]["content"] if data else None
         except (KeyError, IndexError, TypeError):
-            usage_tracker.record("chat", "openai", selected_model, prompt, success=False)
+            usage_tracker.record(
+                "chat", "openai", selected_model, prompt, success=False
+            )
             return None
         usage = data.get("usage", {}) if isinstance(data, dict) else {}
         usage_tracker.record(
@@ -238,7 +269,13 @@ class OllamaClient:
 
     def _generate_anthropic(self, prompt: str, model: str | None = None) -> str | None:
         if not self.anthropic_api_key:
-            usage_tracker.record("chat", "anthropic", model or settings.anthropic_chat_model, prompt, success=False)
+            usage_tracker.record(
+                "chat",
+                "anthropic",
+                model or settings.anthropic_chat_model,
+                prompt,
+                success=False,
+            )
             return None
         selected_model = model or settings.anthropic_chat_model
         payload = {
@@ -258,9 +295,15 @@ class OllamaClient:
         )
         content = data.get("content") if data else None
         if not isinstance(content, list):
-            usage_tracker.record("chat", "anthropic", selected_model, prompt, success=False)
+            usage_tracker.record(
+                "chat", "anthropic", selected_model, prompt, success=False
+            )
             return None
-        text_parts = [part.get("text", "") for part in content if isinstance(part, dict) and part.get("type") == "text"]
+        text_parts = [
+            part.get("text", "")
+            for part in content
+            if isinstance(part, dict) and part.get("type") == "text"
+        ]
         text = "\n".join(part for part in text_parts if part).strip()
         usage = data.get("usage", {}) if isinstance(data, dict) else {}
         usage_tracker.record(
@@ -276,7 +319,9 @@ class OllamaClient:
         return text or None
 
     def _get_json(self, path: str, timeout: float) -> dict | None:
-        request = Request(f"{self.base_url}{path}", headers={"User-Agent": "FinFX-AI-Assistant/0.1"})
+        request = Request(
+            f"{self.base_url}{path}", headers={"User-Agent": "FinFX-AI-Assistant/0.1"}
+        )
         try:
             with urlopen(request, timeout=timeout) as response:
                 return json.loads(response.read().decode("utf-8"))
@@ -284,7 +329,9 @@ class OllamaClient:
             return None
 
     def _post_json(self, path: str, payload: dict, timeout: float) -> dict | None:
-        return self._post_absolute_json(f"{self.base_url}{path}", payload, timeout=timeout)
+        return self._post_absolute_json(
+            f"{self.base_url}{path}", payload, timeout=timeout
+        )
 
     def _post_absolute_json(
         self,
@@ -321,7 +368,7 @@ class OllamaClient:
             if start == -1 or end == -1 or end <= start:
                 return None
             try:
-                parsed = json.loads(value[start:end + 1])
+                parsed = json.loads(value[start : end + 1])
             except json.JSONDecodeError:
                 return None
 
