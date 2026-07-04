@@ -16,17 +16,14 @@ The project is designed for learning and demonstration. All sample data and know
 - Supports optional OpenAI or Anthropic chat providers while keeping embeddings local.
 - Uses pgvector for persistent document RAG and persistent Admin SQL schema RAG.
 
-For LLM/RAG concepts, including how Ollama differs from hosted LLM APIs such as OpenAI and Claude, see:
+## Documentation
 
-```text
-docs/AI_RAG_LLM.md
-```
-
-For step-by-step flow charts showing Ask AI, RAG, vector search, LLM calls, and Admin SQL, see:
-
-```text
-docs/AI_FLOW_CHARTS.md
-```
+- [Local setup](docs/LOCAL_SETUP.md) - required software, `.env`, Ollama, Supabase, vector indexing, and common issues.
+- [LLM, RAG, and vector architecture](docs/AI_RAG_LLM.md) - concepts, Ollama vs cloud LLMs, embeddings, pgvector, and routing layers.
+- [AI flow charts](docs/AI_FLOW_CHARTS.md) - Ask AI and Admin Reports SQL flows with LLM, RAG, and vector-search steps.
+- [Supabase SQL setup](docs/SUPABASE_SQL_SETUP.md) - database scripts and how table/vector setup works.
+- [System architecture](docs/architecture.md) - service-level architecture notes.
+- [Roadmap](docs/roadmap.md) - completed features and future improvements.
 
 ## Tech Stack
 
@@ -72,6 +69,8 @@ finfx-ai-assistant/
   docs/
     AI_RAG_LLM.md        LLM, RAG, vector, and knowledge architecture
     AI_FLOW_CHARTS.md    Ask AI and Admin SQL flow charts
+    LOCAL_SETUP.md       local developer setup guide
+    SUPABASE_SQL_SETUP.md Supabase SQL setup guide
     architecture.md      system architecture notes
     roadmap.md           future roadmap
   scripts/
@@ -82,41 +81,11 @@ finfx-ai-assistant/
     test_services.py
 ```
 
-## Setup Checklist
+## Run Locally
 
-Start here if you are setting up the project for the first time:
+Use [docs/LOCAL_SETUP.md](docs/LOCAL_SETUP.md) for the full local setup guide.
 
-```text
-docs/LOCAL_SETUP.md
-```
-
-It lists required software, official URLs, Ollama setup commands, `.env` setup, Supabase setup, vector indexing commands, and common issues.
-
-## Local Setup
-
-Use Python 3.12, 3.13, or 3.14.
-
-```powershell
-python -m venv .venv
-.\.venv\Scripts\activate
-python -m pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-Start Ollama and pull the recommended local models:
-
-```powershell
-ollama pull llama3.2:3b
-ollama pull nomic-embed-text
-```
-
-Create a local `.env` from `.env.example`:
-
-```powershell
-copy .env.example .env
-```
-
-Start the API:
+Quick start after dependencies and `.env` are ready:
 
 ```powershell
 python -m uvicorn app.main:app --reload
@@ -127,86 +96,7 @@ Open:
 - App: http://127.0.0.1:8000
 - API docs: http://127.0.0.1:8000/docs
 
-## Environment Variables
-
-The app can run locally with SQLite, or connect to Supabase/Postgres.
-
-```text
-APP_NAME=FinFX AI Assistant
-ENVIRONMENT=local
-DATABASE_URL=sqlite:///./finfx.db
-LLM_PROVIDER=ollama
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_CHAT_MODEL=llama3.2:3b
-OLLAMA_EMBEDDING_MODEL=nomic-embed-text
-```
-
-Optional provider keys:
-
-```text
-OPENAI_API_KEY=
-ANTHROPIC_API_KEY=
-ALPHA_VANTAGE_API_KEY=
-FRED_API_KEY=
-```
-
-Create a local `.env` file to save these values when running the project on your own machine:
-
-```powershell
-copy .env.example .env
-```
-
-Then edit `.env` and add only the keys you want to use:
-
-```text
-OPENAI_API_KEY=your_openai_key_here
-ANTHROPIC_API_KEY=your_anthropic_key_here
-ALPHA_VANTAGE_API_KEY=your_alpha_vantage_key_here
-FRED_API_KEY=your_fred_key_here
-```
-
-These keys are optional. The project can still run locally with Ollama and Frankfurter without paid API keys.
-
-Do not commit `.env`. It is ignored by Git so each developer can keep their own local database URL and API keys private.
-
-## Supabase Setup
-
-Run these scripts in the Supabase SQL Editor when using Supabase/Postgres:
-
-```text
-scripts/supabase_pgvector.sql          document knowledge vectors
-scripts/supabase_schema_pgvector.sql   Admin SQL schema vectors
-scripts/supabase_llm_usage.sql         persisted LLM and question logs
-```
-
-The SQL scripts are the source of truth. Setup notes are in:
-
-```text
-docs/SUPABASE_SQL_SETUP.md
-```
-
-Do you need to run SQL manually?
-
-- For a quick local SQLite demo: no.
-- For Supabase with pgvector: yes, run the SQL scripts once in Supabase SQL Editor.
-- The app can auto-create normal SQL tables such as `transfers`, `llm_usage_logs`, and `assistant_question_logs`.
-- The vector extension, vector tables, and vector indexes are better created manually in Supabase SQL Editor.
-- After the tables exist, the app indexes data through API endpoints; do not manually insert embeddings.
-
-Then start FastAPI and index the vector stores:
-
-```powershell
-Invoke-RestMethod "http://127.0.0.1:8000/api/knowledge/vector/index" -Method Post
-Invoke-RestMethod "http://127.0.0.1:8000/api/sql/schema-vector/index" -Method Post
-```
-
-Check status:
-
-```powershell
-Invoke-RestMethod "http://127.0.0.1:8000/api/knowledge/vector/status"
-Invoke-RestMethod "http://127.0.0.1:8000/api/sql/schema-vector/status"
-Invoke-RestMethod "http://127.0.0.1:8000/api/database/status"
-```
+Supabase and pgvector setup is documented in [docs/SUPABASE_SQL_SETUP.md](docs/SUPABASE_SQL_SETUP.md).
 
 ## Main UI Areas
 
