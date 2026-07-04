@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FinFX Reports</title>
+    <link rel="stylesheet" href="/styles.css?v=20260704-4" />
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark">F</span>
+        <div>
+          <strong>FinFX</strong>
+          <small>Reports</small>
+        </div>
+      </div>
+      <nav class="nav-list" aria-label="Primary">
+        <a href="/">Dashboard</a>
+        <a href="/reports.html" class="active">Admin Reports</a>
+        <a href="/docs">API Docs</a>
+      </nav>
+    </aside>
+
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">SQL-backed reporting</p>
+          <h1>Admin reports</h1>
+        </div>
+        <button id="refresh-reports">Refresh</button>
+      </header>
+
+      <div id="reports-db-alert" class="db-alert hidden"></div>
+
+      <section class="report-page-switcher" aria-label="Admin report pages">
+        <button class="report-page-tab active" data-report-page="dashboard">Dashboard</button>
+        <button class="report-page-tab" data-report-page="observability">AI observability</button>
+      </section>
+
+      <div id="report-page-dashboard" class="report-page active">
+      <section class="panel report-filter-panel">
+        <div class="panel-header compact">
+          <div>
+            <p class="eyebrow">Transfer dashboard</p>
+            <h2>Supabase transfer performance</h2>
+          </div>
+          <span id="reports-database-pill" class="pill warning">Checking SQL</span>
+        </div>
+        <div class="report-controls">
+          <label>
+            <span>From currency</span>
+            <select id="filter-from-currency">
+              <option value="ALL">All currencies</option>
+            </select>
+          </label>
+          <label>
+            <span>Period</span>
+            <select id="filter-period">
+              <option value="all">All time</option>
+              <option value="today">Today</option>
+              <option value="7d">Last 7 days</option>
+              <option value="30d">Last 30 days</option>
+            </select>
+          </label>
+          <label>
+            <span>Chart metric</span>
+            <select id="filter-metric">
+              <option value="amount">Source amount</option>
+              <option value="count">Transfer count</option>
+              <option value="converted_amount">Converted amount</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section class="kpi-grid report-kpis" aria-label="Transfer report KPIs">
+        <article class="kpi-card">
+          <span>Transfers</span>
+          <strong id="report-total-count">0</strong>
+          <small>matching current filters</small>
+        </article>
+        <article class="kpi-card">
+          <span>Source amount</span>
+          <strong id="report-total-source">0</strong>
+          <small>sum of sent amount</small>
+        </article>
+        <article class="kpi-card">
+          <span>Top target</span>
+          <strong id="report-top-target">n/a</strong>
+          <small>highest filtered volume</small>
+        </article>
+        <article class="kpi-card">
+          <span>Average rate</span>
+          <strong id="report-average-rate">n/a</strong>
+          <small>filtered records</small>
+        </article>
+      </section>
+
+      <section class="dashboard-grid">
+        <section class="panel">
+          <div class="panel-header compact">
+            <div>
+              <p class="eyebrow">Currency matrix</p>
+              <h2>From currency to target currency</h2>
+            </div>
+          </div>
+          <div id="currency-matrix" class="table-wrap"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header compact">
+            <div>
+              <p class="eyebrow">Corridor distribution</p>
+              <h2 id="corridor-chart-title">Transfers by target currency</h2>
+            </div>
+          </div>
+          <div id="corridor-chart" class="report-chart"></div>
+        </section>
+      </section>
+
+      <section class="lower-grid">
+        <section class="panel">
+          <div class="panel-header compact">
+            <div>
+              <p class="eyebrow">Supabase SQL analytics</p>
+              <h2>Natural language query</h2>
+            </div>
+          </div>
+          <div class="question-bank">
+            <button data-sql-question="last transaction">Last transaction</button>
+            <button data-sql-question="recent transfers">Recent transfers</button>
+            <button data-sql-question="transfer summary">Transfer summary</button>
+          </div>
+          <div class="prompt-row">
+            <input id="sql-question" value="last transaction" />
+            <button id="ask-sql">Run</button>
+          </div>
+          <pre id="sql-answer" class="code-output sql-output">Enter a Supabase transfer question and click Run.</pre>
+          <div id="sql-result-view" class="sql-result-view"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header compact">
+            <div>
+              <p class="eyebrow">Filtered SQL records</p>
+              <h2>Matching transfers</h2>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="rates-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Customer</th>
+                  <th>Amount</th>
+                  <th>Converted</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="transfer-table-body">
+                <tr><td colspan="5">Loading transfers...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+      </div>
+
+      <div id="report-page-observability" class="report-page">
+      <section class="panel report-filter-panel">
+        <div class="panel-header compact">
+          <div>
+            <p class="eyebrow">AI observability</p>
+            <h2>Persisted LLM usage dashboard</h2>
+          </div>
+          <span id="llm-log-pill" class="pill warning">Loading logs</span>
+        </div>
+        <div class="summary-grid">
+          <article class="summary-card">
+            <span>Total calls</span>
+            <strong id="llm-total-calls">0</strong>
+          </article>
+          <article class="summary-card">
+            <span>Total tokens</span>
+            <strong id="llm-total-tokens">0</strong>
+          </article>
+          <article class="summary-card">
+            <span>Top provider</span>
+            <strong id="llm-top-provider">n/a</strong>
+          </article>
+          <article class="summary-card">
+            <span>Failures</span>
+            <strong id="llm-failed-calls">0</strong>
+          </article>
+        </div>
+      </section>
+
+      <section class="dashboard-grid">
+        <section class="panel">
+          <div class="panel-header compact">
+            <div>
+              <p class="eyebrow">Provider cost shape</p>
+              <h2>Tokens by provider</h2>
+            </div>
+          </div>
+          <div id="llm-provider-chart" class="report-chart"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header compact">
+            <div>
+              <p class="eyebrow">Call mix</p>
+              <h2>Calls by operation</h2>
+            </div>
+          </div>
+          <div id="llm-calltype-chart" class="report-chart"></div>
+        </section>
+      </section>
+
+      <section class="panel report-filter-panel">
+        <div class="panel-header compact">
+          <div>
+            <p class="eyebrow">Question analytics</p>
+            <h2>Assistant questions and linked LLM usage</h2>
+          </div>
+          <span id="question-log-pill" class="pill warning">Loading questions</span>
+        </div>
+        <div class="summary-grid">
+          <article class="summary-card">
+            <span>Questions</span>
+            <strong id="question-total-count">0</strong>
+          </article>
+          <article class="summary-card">
+            <span>Linked LLM calls</span>
+            <strong id="question-llm-calls">0</strong>
+          </article>
+          <article class="summary-card">
+            <span>Linked tokens</span>
+            <strong id="question-total-tokens">0</strong>
+          </article>
+          <article class="summary-card">
+            <span>Avg latency</span>
+            <strong id="question-average-latency">0 ms</strong>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel report-filter-panel">
+        <div class="panel-header compact">
+          <div>
+            <p class="eyebrow">Persisted SQL records</p>
+            <h2>Recent assistant question logs</h2>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="rates-table">
+            <thead>
+              <tr>
+                <th>Question</th>
+                <th>Surface</th>
+                <th>Route</th>
+                <th>LLM usage</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="question-log-table-body">
+              <tr><td colspan="5">Loading assistant question logs...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel report-filter-panel">
+        <div class="panel-header compact">
+          <div>
+            <p class="eyebrow">Persisted SQL records</p>
+            <h2>Recent LLM usage logs</h2>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="rates-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Provider</th>
+                <th>Model</th>
+                <th>Type</th>
+                <th>Tokens</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="llm-log-table-body">
+              <tr><td colspan="6">Loading LLM usage logs...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      </div>
+    </main>
+
+    <script src="/reports.js?v=20260704-3"></script>
+  </body>
+</html>

@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FinFX AI Assistant</title>
+    <link rel="stylesheet" href="/styles.css?v=20260704-1" />
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark">F</span>
+        <div>
+          <strong>FinFX</strong>
+          <small>AI Operations</small>
+        </div>
+      </div>
+      <nav class="nav-list" aria-label="Primary">
+        <a href="#assistant" class="active">Assistant</a>
+        <a href="#transactions">Transactions</a>
+        <a href="#live-rates">Live Rates</a>
+        <a href="#fx">Converter</a>
+        <a href="#providers">Providers</a>
+        <a href="/reports.html" id="admin-reports-link">Admin Reports</a>
+      </nav>
+      <div class="system-card">
+        <span class="status-dot"></span>
+        <div>
+          <strong id="rag-mode">Assistant ready</strong>
+          <small id="rag-detail">Ask to run Ollama/RAG</small>
+        </div>
+      </div>
+    </aside>
+
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Foreign exchange and payments intelligence</p>
+          <h1>Operations cockpit</h1>
+        </div>
+        <a class="docs-link" href="/docs">API Docs</a>
+      </header>
+
+      <div id="db-alert" class="db-alert hidden"></div>
+
+      <section class="kpi-grid" aria-label="Payment KPIs">
+        <article class="kpi-card">
+          <span>Total volume</span>
+          <strong id="total-volume">Loading</strong>
+          <small>persisted Supabase transfers</small>
+        </article>
+        <article class="kpi-card">
+          <span>Transactions</span>
+          <strong id="total-count">Loading</strong>
+          <small>stored in SQL</small>
+        </article>
+        <article class="kpi-card">
+          <span>Top corridor</span>
+          <strong id="top-pair">Loading</strong>
+          <small>highest source amount</small>
+        </article>
+        <article class="kpi-card risk">
+          <span>Today</span>
+          <strong id="flagged-count">Loading</strong>
+          <small>transfers created today</small>
+        </article>
+      </section>
+
+      <section class="workspace">
+        <section id="assistant" class="panel assistant-panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">AI assistant</p>
+              <h2>Ask policy, transfer, compliance, or FX questions</h2>
+            </div>
+            <label class="toggle">
+              <input id="use-llm" type="checkbox" checked />
+              <span>Use Ollama LLM</span>
+            </label>
+          </div>
+
+          <div class="question-bank">
+            <button data-question="What documents are required for a high value transfer?">Required documents</button>
+            <button data-question="Why might an international payment be delayed?">Payment delay</button>
+            <button data-question="What patterns indicate suspicious activity?">Suspicious activity</button>
+            <button data-question="best GBP to INR rate this month">Best GBP/INR this month</button>
+          </div>
+
+          <div class="ask-box">
+            <textarea id="knowledge-question" rows="4" placeholder="Ask a policy, transfer, compliance, or FX question"></textarea>
+            <button id="ask-knowledge">Ask AI</button>
+          </div>
+
+          <div id="knowledge-answer" class="answer-card compact-answer">Ask a question to run an AI response.</div>
+          <div id="retrieval-evidence" class="evidence-list"></div>
+        </section>
+
+        <aside class="right-rail">
+          <section id="fx" class="panel">
+            <div class="panel-header compact">
+              <div>
+                <p class="eyebrow">Live FX</p>
+                <h2>Currency converter</h2>
+              </div>
+            </div>
+            <div class="converter-grid">
+              <input id="amount" type="number" value="5000" min="1" />
+              <select id="from-currency"><option>GBP</option><option>EUR</option><option>USD</option><option>AUD</option><option>CAD</option><option>INR</option></select>
+              <select id="to-currency"><option>EUR</option><option>USD</option><option>GBP</option><option>AUD</option><option>CAD</option><option>INR</option></select>
+              <button id="convert">Convert</button>
+            </div>
+            <p id="conversion-result" class="metric-line"></p>
+            <p id="unit-rate" class="unit-rate"></p>
+            <p id="fx-source" class="source-note"></p>
+          </section>
+
+          <section id="transactions" class="panel">
+            <div class="panel-header compact">
+              <div>
+                <p class="eyebrow">Payments</p>
+                <h2>Corridor mix</h2>
+              </div>
+            </div>
+            <div id="status-bars" class="bars"></div>
+          </section>
+        </aside>
+      </section>
+
+      <section id="transfer-entry" class="panel transfer-panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Customer transfer</p>
+            <h2>Create and persist a transfer record</h2>
+          </div>
+          <span id="database-pill" class="pill warning">Checking SQL</span>
+        </div>
+        <form id="transfer-form" class="transfer-form">
+          <input id="transfer-customer" required minlength="2" placeholder="Customer name" value="Tharun Demo" />
+          <input id="transfer-amount" required type="number" min="1" value="5000" />
+          <select id="transfer-from"><option>GBP</option><option>EUR</option><option>USD</option><option>INR</option><option>AUD</option><option>CAD</option></select>
+          <select id="transfer-to"><option>INR</option><option>EUR</option><option>USD</option><option>AUD</option><option>CAD</option></select>
+          <select id="transfer-country" required>
+            <option>India</option>
+            <option>United Kingdom</option>
+            <option>United States</option>
+            <option>Canada</option>
+            <option>Australia</option>
+            <option>Germany</option>
+            <option>France</option>
+            <option>United Arab Emirates</option>
+          </select>
+          <select id="transfer-purpose" required>
+            <option>Family support</option>
+            <option>Education fees</option>
+            <option>Medical expenses</option>
+            <option>Property purchase</option>
+            <option>Supplier invoice</option>
+            <option>Salary payment</option>
+            <option>Business investment</option>
+            <option>Travel expenses</option>
+          </select>
+          <button type="submit">Submit Transfer</button>
+        </form>
+        <div id="transfer-preview" class="transfer-preview">Enter transfer details to preview conversion.</div>
+        <div id="transfer-result" class="answer-card compact-answer"></div>
+      </section>
+
+      <section id="live-rates" class="panel live-rates-panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Market rates</p>
+            <h2>Live exchange rates table</h2>
+          </div>
+          <div class="rate-tabs" role="tablist" aria-label="Live rate groups">
+            <button class="rate-tab active" data-rate-group="GBP">GBP Pairs</button>
+            <button class="rate-tab" data-rate-group="EUR">EUR Pairs</button>
+            <button class="rate-tab" data-rate-group="USD">USD Pairs</button>
+            <button class="rate-tab" data-rate-group="INR">INR Pairs</button>
+          </div>
+        </div>
+        <p class="source-note">Interbank guide rates only. Customer transfer rates may differ because commercial rates include provider margin and execution costs.</p>
+        <div class="table-wrap">
+          <table class="rates-table">
+            <thead>
+              <tr>
+                <th>Pair</th>
+                <th>Latest</th>
+                <th>Previous</th>
+                <th>Change</th>
+                <th>Variance</th>
+              </tr>
+            </thead>
+            <tbody id="live-rates-body">
+              <tr><td colspan="5">Loading live rates...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p id="live-rates-source" class="source-note"></p>
+      </section>
+
+      <section id="providers" class="panel providers-panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Market data strategy</p>
+            <h2>Data providers</h2>
+          </div>
+        </div>
+        <div id="provider-grid" class="provider-grid">
+          <article class="provider-card"><strong>Loading providers...</strong></article>
+        </div>
+      </section>
+
+      <section id="llm-usage" class="panel providers-panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">AI observability</p>
+            <h2>LLM call and token logging</h2>
+          </div>
+          <button id="refresh-llm-usage" type="button" class="ghost-button">Refresh</button>
+        </div>
+        <div id="llm-usage-grid" class="provider-grid">
+          <article class="provider-card"><strong>No usage logged yet.</strong></article>
+        </div>
+        <div id="llm-usage-recent" class="usage-list"></div>
+      </section>
+    </main>
+
+    <div id="admin-login-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="admin-login-title">
+      <div class="modal-card">
+        <div class="panel-header compact">
+          <div>
+            <p class="eyebrow">Admin access</p>
+            <h2 id="admin-login-title">Open reports dashboard</h2>
+          </div>
+          <button id="admin-login-close" type="button" class="ghost-button" aria-label="Close admin login">Close</button>
+        </div>
+        <p class="source-note">Demo credentials are prefilled for this portfolio build.</p>
+        <form id="admin-login-form" class="admin-login-form">
+          <label>
+            <span>Username</span>
+            <input id="admin-username" autocomplete="username" value="admin@finfx.local" />
+          </label>
+          <label>
+            <span>Password</span>
+            <input id="admin-password" type="password" autocomplete="current-password" value="FinFXAdmin123" />
+          </label>
+          <div id="admin-login-error" class="form-error hidden">Invalid admin credentials.</div>
+          <button type="submit">Login and Open Reports</button>
+        </form>
+      </div>
+    </div>
+
+    <script src="/app.js?v=20260704-1"></script>
+  </body>
+</html>

@@ -1,0 +1,11 @@
+transaction_id,customer_id,created_date,currency_pair,amount_gbp,destination_country,status,risk_score
+TXN-1001,CUST-001,2026-07-02,GBP/EUR,4200,Spain,settled,22
+TXN-1002,CUST-002,2026-07-02,GBP/USD,12500,United States,compliance_review,78
+TXN-1003,CUST-003,2026-07-02,GBP/AUD,8300,Australia,settled,35
+TXN-1004,CUST-004,2026-07-02,GBP/EUR,15200,France,failed,81
+TXN-1005,CUST-005,2026-07-02,GBP/INR,2600,India,settled,18
+TXN-1006,CUST-006,2026-07-02,GBP/CAD,9800,Canada,pending,41
+TXN-1007,CUST-007,2026-07-02,GBP/USD,19100,United States,settled,64
+TXN-1008,CUST-008,2026-07-02,GBP/EUR,7400,Germany,failed,56
+TXN-1009,CUST-009,2026-07-02,GBP/AUD,22500,Australia,compliance_review,88
+TXN-1010,CUST-010,2026-07-02,GBP/EUR,3100,Italy,settled,12

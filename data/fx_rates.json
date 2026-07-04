@@ -1,0 +1,13 @@
+{
+  "base": "GBP",
+  "as_of": "2026-07-02",
+  "source": "Synthetic demo rates for portfolio use only",
+  "rates": {
+    "GBP": 1.0,
+    "EUR": 1.18,
+    "USD": 1.32,
+    "AUD": 1.98,
+    "CAD": 1.79,
+    "INR": 110.4
+  }
+}
